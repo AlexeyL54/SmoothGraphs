@@ -8,6 +8,12 @@
 #include <QMenu>
 #include <QMouseEvent>
 
-class CircleNode : public QGraphicsEllipseItem {};
+class Figure : public QGraphicsEllipseItem {
+public:
+  using QGraphicsEllipseItem::QGraphicsEllipseItem;
+
+protected:
+  void contextMenuEvent(QGraphicsSceneContextMenuEvent *event) override;
+};
 
 class Edge {};

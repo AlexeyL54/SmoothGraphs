@@ -24,8 +24,6 @@ MainWindow::MainWindow(QWidget *parent) : QWidget(parent) {
   graphView_->setGeometry(0, 0, width(), height());
 
   // MenuBar позиционируем сверху.
-  // Предположим, высота MenuBar около 60-80px (зависит от вашего MAX_HEIGHT_)
-  // Вам нужно узнать желаемую высоту MenuBar.
   menuBar_->setGeometry(10, 10, width() - 20, menuBar_->maxHeight() + 40);
 
   // 4. Важно: поднимаем MenuBar на передний план, чтобы клики по нему работали

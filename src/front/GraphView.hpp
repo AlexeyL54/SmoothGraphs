@@ -1,5 +1,7 @@
 #pragma once
 
+#include "qgraphicsscene.h"
+#include "qtmetamacros.h"
 #include <QApplication>
 #include <QGraphicsScene>
 #include <QGraphicsView>
@@ -12,4 +14,11 @@ public:
 
 protected:
   void contextMenuEvent(QContextMenuEvent *event) override;
+
+private:
+  QGraphicsScene *scene_;
+
+private slots:
+  void addFigure();
+  void clear();
 };
