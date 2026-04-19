@@ -1,14 +1,17 @@
 #pragma once
 
+#include "qboxlayout.h"
+#include "qpropertyanimation.h"
+#include "qpushbutton.h"
+#include "qwidget.h"
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QIcon>
 #include <QMainWindow>
 #include <QPropertyAnimation>
 #include <QPushButton>
+#include <QStyle>
 #include <QVBoxLayout>
-
-#include "MainWindow.hpp"
 
 /**
  * @brief Кастомный виджет - меню
@@ -24,4 +27,32 @@
 │       └── QPushButton(Stop Icon)
 └── QPushButton(Кнопка - триггер для сворачивания)
  */
-class MenuBar : public MainWindow {};
+class MenuBar : public QWidget {
+public:
+  explicit MenuBar(QWidget *parent = nullptr);
+  ~MenuBar();
+  int maxHeight();
+
+private:
+  const int MAX_HEIGHT_ = 60;
+
+  QVBoxLayout *mainLaout_ = nullptr;
+  QFrame *menuFrame_ = nullptr;
+  QHBoxLayout *buttonLayout_ = nullptr;
+
+  QPushButton *openBtn_ = nullptr;
+  QPushButton *saveBtn_ = nullptr;
+  QPushButton *runBtn_ = nullptr;
+  QPushButton *stopBtn_ = nullptr;
+  QPushButton *wrapBtn_ = nullptr;
+
+  QPropertyAnimation *wrapAnimation_ = nullptr;
+
+  bool isExpanded_ = true;
+
+  void setButtons();
+  void addButtons();
+  void setStyle();
+  void setWrapAnimation();
+  void wrapMenu();
+};

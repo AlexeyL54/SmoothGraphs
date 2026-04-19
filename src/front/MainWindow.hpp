@@ -1,11 +1,15 @@
 #pragma once
 
+#include <QApplication>
+#include <QHBoxLayout>
+#include <QMainWindow>
 #include <QStackedWidget>
+#include <QVBoxLayout>
 #include <QWidget>
 
-#include "Figures.hpp"
 #include "GraphView.hpp"
 #include "MenuBar.hpp"
+#include "qevent.h"
 
 class MainWindow : public QWidget {
   Q_OBJECT
@@ -17,5 +21,10 @@ public:
 private slots:
 
 private:
-  QStackedWidget *stackedWidget = nullptr;
+  QGraphicsScene *scene_;
+  GraphView *graphView_ = nullptr;
+  MenuBar *menuBar_ = nullptr;
+
+protected:
+  void resizeEvent(QResizeEvent *event) override;
 };
