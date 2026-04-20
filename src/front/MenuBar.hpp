@@ -1,9 +1,5 @@
 #pragma once
 
-#include "qboxlayout.h"
-#include "qpropertyanimation.h"
-#include "qpushbutton.h"
-#include "qwidget.h"
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QIcon>
