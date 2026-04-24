@@ -90,12 +90,12 @@ void Edge::updatePosition() {
 std::pair<QPointF, QPointF> Edge::computeArrowPos(QLineF &line) {
   double angle = std::atan2(-line.dy(), line.dx());
   QPointF endPt = line.p2();
-  qreal arrowSize = 10.0;
+  qreal arrowSize = 20.0;
 
-  QPointF arrowP1 = endPt + QPointF(std::sin(angle + M_PI / 3) * arrowSize,
+  QPointF arrowP1 = endPt - QPointF(std::sin(angle + M_PI / 3) * arrowSize,
                                     std::cos(angle + M_PI / 3) * arrowSize);
   QPointF arrowP2 =
-      endPt + QPointF(std::sin(angle + M_PI - M_PI / 3) * arrowSize,
+      endPt - QPointF(std::sin(angle + M_PI - M_PI / 3) * arrowSize,
                       std::cos(angle + M_PI - M_PI / 3) * arrowSize);
 
   return std::make_pair(arrowP1, arrowP2);
@@ -155,6 +155,7 @@ void Edge::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
 void Edge::contextMenuEvent(QGraphicsSceneContextMenuEvent *event) {
   QMenu menu;
   QAction *deleteAction = menu.addAction("Удалить ребро");
+  QAction *weightAction = menu.addAction("Изменить вес");
 
   QObject::connect(deleteAction, &QAction::triggered, [this]() {
     if (scene())
