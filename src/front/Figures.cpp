@@ -1,5 +1,7 @@
 #include "Figures.hpp"
 #include "GraphView.hpp"
+#include "qgraphicsitem.h"
+#include "qlogging.h"
 
 #include <QApplication>
 #include <QDebug>
@@ -57,6 +59,11 @@ Edge::~Edge() {
 void Edge::updatePosition() {
   if (!startNode_ || !endNode_) {
     qDebug() << "updatePosition: null nodes";
+    return;
+  }
+
+  if (!startNode_->scene() || !endNode_->scene()) {
+    qDebug() << "Nodes doesn't exist in scene";
     return;
   }
 
@@ -161,6 +168,21 @@ void Edge::contextMenuEvent(QGraphicsSceneContextMenuEvent *event) {
 // ======================== Figure Implementation ========================
 
 /**
+ * @brief Конструктор узла графа.
+ * @param x Координата X левого верхнего угла.
+ * @param y Координата Y левого верхнего угла.
+ * @param width Ширина фигуры.
+ * @param height Высота фигуры.
+ * @param parent Родительский элемент (по умолчанию nullptr).
+ */
+Figure::Figure(qreal x, qreal y, qreal width, qreal height,
+               QGraphicsItem *parent)
+    : QGraphicsEllipseItem(x, y, width, height) {
+  setRect(x, y, width, height);
+  setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
+}
+
+/**
  * @brief Добавляет входящее ребро к узлу.
  * @param edge Указатель на добавляемое ребро.
  *
@@ -204,6 +226,22 @@ void Figure::removeIncomingEdge(Edge *edge) {
 void Figure::removeOutgoingEdge(Edge *edge) {
   outgoingEdges_.removeOne(edge);
   qDebug() << "Removed outgoing edge from" << this;
+}
+
+/**
+ * @brief Очищает список входящих ребер
+ */
+void Figure::clearIncomingEdges() {
+  incomingEdges_.clear();
+  qDebug() << "Removed all incoming edges" << this;
+}
+
+/**
+ * @brief Очищает список исходящих ребер
+ */
+void Figure::clearOutcomingEdges() {
+  outgoingEdges_.clear();
+  qDebug() << "Removed all outcoming edges" << this;
 }
 
 /**

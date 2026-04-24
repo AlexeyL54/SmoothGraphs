@@ -155,9 +155,61 @@ void GraphView::addFigure() {
  * связанные с созданием рёбер.
  */
 void GraphView::clear() {
-  if (scene_)
-    scene_->clear();
+  if (!scene_)
+    return;
+
+  qDebug() << "Starting clear...";
+
+  // Отключаем сигналы и флаги, чтобы избежать лишних обновлений
   isCreatingEdge_ = false;
+
+  // Собираем все элементы
+  QList<QGraphicsItem *> items = scene_->items();
+
+  // Сначала удаляем все рёбра вручную (отвязывая их перед удалением)
+  for (QGraphicsItem *item : items) {
+    Edge *edge = dynamic_cast<Edge *>(item);
+    if (edge) {
+      qDebug() << "Removing edge manually";
+      // Отвязываем ребро от узлов перед удалением
+      Figure *start = edge->getStartNode();
+      Figure *end = edge->getEndNode();
+      if (start) {
+        start->removeOutgoingEdge(edge);
+      }
+      if (end) {
+        end->removeIncomingEdge(edge);
+      }
+      // Удаляем ребро
+      scene_->removeItem(edge);
+      delete edge;
+    }
+  }
+
+  // Теперь удаляем все фигуры
+  items = scene_->items(); // Обновляем список (рёбер уже нет)
+  for (QGraphicsItem *item : items) {
+    Figure *fig = dynamic_cast<Figure *>(item);
+    if (fig) {
+      qDebug() << "Removing figure manually";
+      // Очищаем списки (хотя они уже должны быть пусты)
+      fig->clearIncomingEdges();
+      fig->clearOutcomingEdges();
+      scene_->removeItem(fig);
+      delete fig;
+    }
+  }
+
+  // Дополнительная очистка на всякий случай
+  scene_->clear();
+
+  // Сбрасываем указатели
   startNode_ = nullptr;
-  tempEdge_ = nullptr;
+  if (tempEdge_) {
+    // tempEdge_ уже должен быть удалён
+    tempEdge_ = nullptr;
+  }
+
+  setCursor(Qt::ArrowCursor);
+  qDebug() << "Clear finished";
 }

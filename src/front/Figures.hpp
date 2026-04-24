@@ -154,6 +154,16 @@ public:
   void removeOutgoingEdge(Edge *edge);
 
   /**
+   * @brief Очищает список входящих ребер
+   */
+  void clearIncomingEdges();
+
+  /**
+   * @brief Очищает список исходящих ребер
+   */
+  void clearOutcomingEdges();
+
+  /**
    * @brief Возвращает центр фигуры в координатах сцены.
    * @return QPointF с координатами центра.
    */
