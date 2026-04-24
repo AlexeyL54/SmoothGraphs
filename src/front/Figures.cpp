@@ -1,7 +1,10 @@
 #include "Figures.hpp"
 #include "GraphView.hpp"
+#include "qobject.h"
+#include "qpoint.h"
 
 #include <QApplication>
+#include <QDebug>
 #include <QGraphicsEllipseItem>
 #include <QGraphicsScene>
 #include <QGraphicsSceneContextMenuEvent>
@@ -9,30 +12,51 @@
 #include <QMenu>
 #include <QMouseEvent>
 #include <QObject>
+#include <QPainterPath>
+#include <cmath>
 #include <utility>
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
+// ======================== Edge Implementation ========================
 
 Edge::Edge(Figure *start, Figure *end, QGraphicsItem *parent)
     : QGraphicsLineItem(parent), startNode_(start), endNode_(end) {
-  setParentItem(start);
   setFlag(QGraphicsItem::ItemIsSelectable);
   setPen(QPen(Qt::black, 2));
-  updateMicroFocus();
+  updatePosition();
+  qDebug() << "Edge created between" << start << "and" << end;
 }
 
-void Edge::updateEndPosition() {
-  if (!startNode_ or !endNode_)
+Edge::~Edge() {
+  qDebug() << "Edge destroyed";
+  if (endNode_)
+    endNode_->removeIncomingEdge(this);
+  if (startNode_)
+    startNode_->removeOutgoingEdge(this);
+}
+
+void Edge::updatePosition() {
+  if (!startNode_ || !endNode_) {
+    qDebug() << "updatePosition: null nodes";
     return;
-
-  // если петля
-  if (startNode_ == endNode_) {
-    setLine(QLineF(0, 0, 40, -40));
-
-    // иначе ребро соединяет два разных узла
-  } else {
-    QPointF endLocalPos =
-        endNode_->mapToItem(startNode_, endNode_->rect().center());
-    setLine(QLineF(0, 0, endLocalPos.x(), endLocalPos.y()));
   }
+
+  QPointF startCenter = startNode_->getCenter();
+  QPointF endCenter = endNode_->getCenter();
+
+  if (startNode_ == endNode_) {
+    // Петля
+    setLine(QLineF(startCenter.x() + 40, startCenter.y(), startCenter.x() + 80,
+                   startCenter.y() - 40));
+  } else {
+    // Обычное ребро
+    setLine(QLineF(startCenter, endCenter));
+  }
+
+  qDebug() << "Edge updated:" << line();
 }
 
 std::pair<QPointF, QPointF> Edge::computeArrowPos(QLineF &line) {
@@ -74,31 +98,51 @@ void Edge::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
 
   painter->setPen(pen());
   painter->drawLine(line);
+
+  std::pair<QPointF, QPointF> arrowP = computeArrowPos(line);
+  paintArrow(painter, line, arrowP.first, arrowP.second);
 }
 
 void Edge::contextMenuEvent(QGraphicsSceneContextMenuEvent *event) {
   QMenu menu;
-  menu.addAction("Удалить");
-  menu.addAction("Настроить");
+  QAction *deleteAction = menu.addAction("Удалить ребро");
+
+  QObject::connect(deleteAction, &QAction::triggered, [this]() {
+    if (scene())
+      scene()->removeItem(this);
+  });
 
   menu.exec(event->screenPos());
-
   event->accept();
 }
 
-Edge::~Edge() {
-  if (endNode_)
-    endNode_->removeIncomingEdge(this);
-}
-
-///////////////////////////////////////////////////////////////////////////////////////
+// ======================== Figure Implementation ========================
 
 void Figure::addIncomingEdge(Edge *edge) {
-  if (!incomingEdges_.contains(edge))
+  if (!incomingEdges_.contains(edge)) {
     incomingEdges_.append(edge);
+    qDebug() << "Added incoming edge to" << this
+             << "total:" << incomingEdges_.size();
+  }
 }
 
-void Figure::removeIncomingEdge(Edge *edge) { incomingEdges_.removeOne(edge); }
+void Figure::addOutgoingEdge(Edge *edge) {
+  if (!outgoingEdges_.contains(edge)) {
+    outgoingEdges_.append(edge);
+    qDebug() << "Added outgoing edge from" << this
+             << "total:" << outgoingEdges_.size();
+  }
+}
+
+void Figure::removeIncomingEdge(Edge *edge) {
+  incomingEdges_.removeOne(edge);
+  qDebug() << "Removed incoming edge from" << this;
+}
+
+void Figure::removeOutgoingEdge(Edge *edge) {
+  outgoingEdges_.removeOne(edge);
+  qDebug() << "Removed outgoing edge from" << this;
+}
 
 void Figure::hoverEnterEvent(QGraphicsSceneHoverEvent *event) {
   setBrush(Qt::yellow);
@@ -113,7 +157,9 @@ void Figure::hoverLeaveEvent(QGraphicsSceneHoverEvent *event) {
 void Figure::addEdge() {
   if (scene()) {
     for (QGraphicsView *view : scene()->views()) {
-      if (GraphView *gv = qobject_cast<GraphView *>(view)) {
+      GraphView *gv = qobject_cast<GraphView *>(view);
+      if (gv) {
+        qDebug() << "Starting edge creation from" << this;
         gv->startEdgeCreation(this);
         break;
       }
@@ -124,19 +170,39 @@ void Figure::addEdge() {
 void Figure::contextMenuEvent(QGraphicsSceneContextMenuEvent *event) {
   QMenu menu;
   QAction *addEdgeAction = menu.addAction("Добавить грань");
+  QAction *deleteNodeAction = menu.addAction("Удалить узел");
 
   QObject::connect(addEdgeAction, &QAction::triggered,
                    [this]() { this->addEdge(); });
+  QObject::connect(deleteNodeAction, &QAction::triggered, [this]() {
+    // Удаляем все связанные рёбра
+    for (Edge *edge : incomingEdges_) {
+      if (scene())
+        scene()->removeItem(edge);
+    }
+    for (Edge *edge : outgoingEdges_) {
+      if (scene())
+        scene()->removeItem(edge);
+    }
+    if (scene())
+      scene()->removeItem(this);
+  });
 
   menu.exec(event->screenPos());
-
   event->accept();
 }
 
 QVariant Figure::itemChange(GraphicsItemChange change, const QVariant &value) {
   if (change == ItemPositionHasChanged) {
+    qDebug() << "Figure" << this << "moved to" << value.toPointF();
+    // Обновляем все связанные рёбра
     for (Edge *edge : incomingEdges_) {
-      edge->updateEndPosition();
+      qDebug() << "Updating incoming edge";
+      edge->updatePosition();
+    }
+    for (Edge *edge : outgoingEdges_) {
+      qDebug() << "Updating outgoing edge";
+      edge->updatePosition();
     }
   }
   return QGraphicsEllipseItem::itemChange(change, value);

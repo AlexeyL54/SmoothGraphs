@@ -7,7 +7,7 @@
 #include <QMouseEvent>
 
 #include "Figures.hpp"
-#include "qtmetamacros.h"
+#include "qpoint.h"
 
 class GraphView : public QGraphicsView {
   Q_OBJECT
@@ -25,7 +25,8 @@ private:
   QGraphicsScene *scene_;
   bool isCreatingEdge_ = false;
   Figure *startNode_ = nullptr;
-  Edge *tempEdge_ = nullptr;
+  QGraphicsLineItem *tempEdge_ = nullptr;
+  QPointF startPos_;
 
 private slots:
   void addFigure();

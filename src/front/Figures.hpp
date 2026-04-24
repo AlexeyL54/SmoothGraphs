@@ -3,7 +3,6 @@
 #include "qline.h"
 #include "qpainter.h"
 #include "qpoint.h"
-#include "qtmetamacros.h"
 #include <QApplication>
 #include <QGraphicsEllipseItem>
 #include <QGraphicsLineItem>
@@ -17,14 +16,12 @@ class Figure;
 
 class Edge : public QGraphicsLineItem {
 public:
-  using QGraphicsLineItem::QGraphicsLineItem;
-
-  explicit Edge(Figure *start, Figure *end, QGraphicsItem *parent = nullptr);
+  Edge(Figure *start, Figure *end, QGraphicsItem *parent = nullptr);
   ~Edge();
 
-  void updateEndPosition();
-  Figure *getStartNode() const;
-  Figure *getEndNode() const;
+  void updatePosition();
+  Figure *getStartNode() const { return startNode_; }
+  Figure *getEndNode() const { return endNode_; }
 
 protected:
   void contextMenuEvent(QGraphicsSceneContextMenuEvent *event) override;
@@ -43,10 +40,19 @@ private:
 
 class Figure : public QGraphicsEllipseItem {
 public:
-  using QGraphicsEllipseItem::QGraphicsEllipseItem;
+  Figure(qreal x, qreal y, qreal width, qreal height,
+         QGraphicsItem *parent = nullptr)
+      : QGraphicsEllipseItem(x, y, width, height, parent) {
+    setRect(0, 0, width, height); // Важно: установить локальные координаты
+    setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
+  }
 
   void addIncomingEdge(Edge *edge);
+  void addOutgoingEdge(Edge *edge);
   void removeIncomingEdge(Edge *edge);
+  void removeOutgoingEdge(Edge *edge);
+
+  QPointF getCenter() const { return scenePos() + QPointF(50, 50); }
 
 protected:
   void contextMenuEvent(QGraphicsSceneContextMenuEvent *event) override;
@@ -57,10 +63,7 @@ protected:
 
 private:
   QList<Edge *> incomingEdges_;
+  QList<Edge *> outgoingEdges_;
 
   void addEdge();
-
-private slots:
-  // void setColor();
-  // void setWeight();
 };

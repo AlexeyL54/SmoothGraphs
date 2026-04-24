@@ -1,5 +1,6 @@
 #include "GraphView.hpp"
 #include "Figures.hpp"
+#include "qgraphicsitem.h"
 
 GraphView::GraphView(QGraphicsScene *scene, QWidget *parent)
     : QGraphicsView(scene, parent), scene_(scene) {
@@ -7,8 +8,6 @@ GraphView::GraphView(QGraphicsScene *scene, QWidget *parent)
 }
 
 void GraphView::contextMenuEvent(QContextMenuEvent *event) {
-  // Проверяем, кликнули ли мы по какому-то элементу.
-  // Если itemUnderMouse() возвращает nullptr, значит клик по фону.
   if (itemAt(event->pos()) == nullptr) {
     QMenu menu;
     QAction *addFigAction = menu.addAction("Добавить узел");
@@ -19,8 +18,6 @@ void GraphView::contextMenuEvent(QContextMenuEvent *event) {
 
     menu.exec(event->globalPos());
   } else {
-    // Если клик по элементу, передаем событие дальше (элемент сам покажет свое
-    // меню)
     QGraphicsView::contextMenuEvent(event);
   }
 }
@@ -28,70 +25,72 @@ void GraphView::contextMenuEvent(QContextMenuEvent *event) {
 void GraphView::startEdgeCreation(Figure *startNode) {
   isCreatingEdge_ = true;
   startNode_ = startNode;
+  startPos_ = startNode->scenePos() + QPointF(50, 50);
   setCursor(Qt::CrossCursor);
 
-  // Временное ребро (начало и конец совпадают)
-  tempEdge_ = new Edge(startNode, startNode);
+  tempEdge_ = new QGraphicsLineItem();
   tempEdge_->setPen(QPen(Qt::gray, 2, Qt::DashLine));
-  tempEdge_->setFlag(QGraphicsItem::ItemIsSelectable, false);
+  tempEdge_->setZValue(-1);
   scene_->addItem(tempEdge_);
 }
 
 void GraphView::mouseMoveEvent(QMouseEvent *event) {
   if (isCreatingEdge_ && tempEdge_) {
-    // Тянем конец линии за курсором в локальных координатах startNode
-    QPointF mouseLocalPos = startNode_->mapFromScene(mapToScene(event->pos()));
-    tempEdge_->setLine(QLineF(0, 0, mouseLocalPos.x(), mouseLocalPos.y()));
+    QPointF currentPos = mapToScene(event->pos());
+    QLineF line(startPos_, currentPos);
+    tempEdge_->setLine(line);
   }
   QGraphicsView::mouseMoveEvent(event);
 }
 
 void GraphView::mousePressEvent(QMouseEvent *event) {
-  if (isCreatingEdge_ && event->button() == Qt::LeftButton) {
-    QGraphicsItem *item = itemAt(event->pos());
-    Figure *endNode = dynamic_cast<Figure *>(item);
+  if (isCreatingEdge_) {
+    if (event->button() == Qt::LeftButton) {
+      QPointF scenePos = mapToScene(event->pos());
+      QGraphicsItem *item = scene_->itemAt(scenePos, QTransform());
+      Figure *endNode = dynamic_cast<Figure *>(item);
 
-    if (endNode) {
-      // Удаляем временную линию
+      if (endNode && endNode != startNode_) {
+        if (tempEdge_) {
+          scene_->removeItem(tempEdge_);
+          delete tempEdge_;
+          tempEdge_ = nullptr;
+        }
+
+        Edge *finalEdge = new Edge(startNode_, endNode);
+        scene_->addItem(finalEdge);
+
+        // ВАЖНО: добавляем ребро в оба узла
+        startNode_->addOutgoingEdge(finalEdge);
+        endNode->addIncomingEdge(finalEdge);
+
+        // Принудительно обновляем позицию
+        finalEdge->updatePosition();
+
+        qDebug() << "Edge created and added to both nodes";
+      } else {
+        if (tempEdge_) {
+          scene_->removeItem(tempEdge_);
+          delete tempEdge_;
+          tempEdge_ = nullptr;
+        }
+      }
+
+      isCreatingEdge_ = false;
+      startNode_ = nullptr;
+      setCursor(Qt::ArrowCursor);
+      return;
+    } else if (event->button() == Qt::RightButton) {
       if (tempEdge_) {
         scene_->removeItem(tempEdge_);
         delete tempEdge_;
         tempEdge_ = nullptr;
       }
-
-      // Создаём постоянное ребро
-      Edge *finalEdge = new Edge(startNode_, endNode);
-      scene_->addItem(finalEdge);
-
-      // Регистрируем ребро в целевом узле
-      endNode->addIncomingEdge(finalEdge);
-    } else {
-      // Кликнули в пустоту -> отмена
-      if (tempEdge_) {
-        scene_->removeItem(tempEdge_);
-        delete tempEdge_;
-        tempEdge_ = nullptr;
-      }
+      isCreatingEdge_ = false;
+      startNode_ = nullptr;
+      setCursor(Qt::ArrowCursor);
+      return;
     }
-
-    // Сброс состояния
-    isCreatingEdge_ = false;
-    startNode_ = nullptr;
-    setCursor(Qt::ArrowCursor);
-    return; // Не передаём событие дальше, чтобы не выделять объекты
-  }
-
-  // Правая кнопка во время создания -> отмена
-  if (isCreatingEdge_ && event->button() == Qt::RightButton) {
-    if (tempEdge_) {
-      scene_->removeItem(tempEdge_);
-      delete tempEdge_;
-      tempEdge_ = nullptr;
-    }
-    isCreatingEdge_ = false;
-    startNode_ = nullptr;
-    setCursor(Qt::ArrowCursor);
-    return;
   }
 
   QGraphicsView::mousePressEvent(event);
