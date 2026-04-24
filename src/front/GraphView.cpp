@@ -1,12 +1,26 @@
 #include "GraphView.hpp"
 #include "Figures.hpp"
-#include "qgraphicsitem.h"
 
+#include <QMenu>
+
+/**
+ * @brief Конструктор класса GraphView.
+ * @param scene Указатель на сцену QGraphicsScene.
+ * @param parent Родительский виджет (по умолчанию nullptr).
+ */
 GraphView::GraphView(QGraphicsScene *scene, QWidget *parent)
     : QGraphicsView(scene, parent), scene_(scene) {
   setMouseTracking(true);
 }
 
+/**
+ * @brief Обработчик события контекстного меню.
+ * @param event Указатель на событие контекстного меню.
+ *
+ * Если клик произошёл на пустом месте сцены, отображает меню с опциями:
+ * - "Добавить узел" — создаёт новую фигуру
+ * - "Очистить все" — удаляет все элементы со сцены
+ */
 void GraphView::contextMenuEvent(QContextMenuEvent *event) {
   if (itemAt(event->pos()) == nullptr) {
     QMenu menu;
@@ -22,6 +36,13 @@ void GraphView::contextMenuEvent(QContextMenuEvent *event) {
   }
 }
 
+/**
+ * @brief Начинает процесс создания ребра от указанного узла.
+ * @param startNode Указатель на начальный узел (фигуру).
+ *
+ * Метод активирует режим создания ребра: устанавливает курсор,
+ * создаёт временное пунктирное ребро и отслеживает перемещение мыши.
+ */
 void GraphView::startEdgeCreation(Figure *startNode) {
   isCreatingEdge_ = true;
   startNode_ = startNode;
@@ -34,6 +55,13 @@ void GraphView::startEdgeCreation(Figure *startNode) {
   scene_->addItem(tempEdge_);
 }
 
+/**
+ * @brief Обработчик события перемещения мыши.
+ * @param event Указатель на событие мыши.
+ *
+ * В режиме создания ребра обновляет положение временного ребра
+ * от начального узла до текущей позиции курсора.
+ */
 void GraphView::mouseMoveEvent(QMouseEvent *event) {
   if (isCreatingEdge_ && tempEdge_) {
     QPointF currentPos = mapToScene(event->pos());
@@ -43,6 +71,14 @@ void GraphView::mouseMoveEvent(QMouseEvent *event) {
   QGraphicsView::mouseMoveEvent(event);
 }
 
+/**
+ * @brief Обработчик события нажатия кнопки мыши.
+ * @param event Указатель на событие мыши.
+ *
+ * В режиме создания ребра:
+ * - ЛКМ: завершает создание ребра, если курсор над целевым узлом
+ * - ПКМ: отменяет создание ребра
+ */
 void GraphView::mousePressEvent(QMouseEvent *event) {
   if (isCreatingEdge_) {
     if (event->button() == Qt::LeftButton) {
@@ -96,6 +132,12 @@ void GraphView::mousePressEvent(QMouseEvent *event) {
   QGraphicsView::mousePressEvent(event);
 }
 
+/**
+ * @brief Слот для добавления новой фигуры на сцену.
+ *
+ * Создаёт экземпляр Figure красного цвета, разрешает перемещение
+ * и добавляет его в сцену.
+ */
 void GraphView::addFigure() {
   Figure *fig = new Figure(0, 0, 100, 100);
   fig->setBrush(Qt::red);
@@ -106,6 +148,12 @@ void GraphView::addFigure() {
     scene_->addItem(fig);
 }
 
+/**
+ * @brief Слот для очистки сцены.
+ *
+ * Удаляет все элементы со сцены и сбрасывает внутренние состояния,
+ * связанные с созданием рёбер.
+ */
 void GraphView::clear() {
   if (scene_)
     scene_->clear();

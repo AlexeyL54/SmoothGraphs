@@ -7,26 +7,20 @@
 #include <QVBoxLayout>
 
 MainWindow::MainWindow(QWidget *parent) : QWidget(parent) {
-  // 1. Создаем GraphView, который будет занимать всё окно
   QGraphicsScene *scene = new QGraphicsScene(this);
   scene->setSceneRect(-200, -200, 400, 400);
 
-  graphView_ =
-      new GraphView(scene, this); // Сохраните graphView_ как поле класса!
+  graphView_ = new GraphView(scene, this);
   graphView_->setRenderHint(QPainter::Antialiasing);
   graphView_->setDragMode(QGraphicsView::RubberBandDrag);
 
-  // 2. Создаем MenuBar
-  menuBar_ = new MenuBar(this); // Сохраните menuBar_ как поле класса!
+  menuBar_ = new MenuBar(this);
 
-  // 3. Настраиваем размеры и позиции
-  // GraphView всегда занимает всё доступное место
   graphView_->setGeometry(0, 0, width(), height());
 
-  // MenuBar позиционируем сверху.
   menuBar_->setGeometry(10, 10, width() - 20, menuBar_->maxHeight() + 40);
 
-  // 4. Важно: поднимаем MenuBar на передний план, чтобы клики по нему работали
+  //  Важно: поднимаем MenuBar на передний план, чтобы клики по нему работали
   menuBar_->raise();
 }
 
