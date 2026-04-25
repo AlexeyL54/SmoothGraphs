@@ -1,7 +1,6 @@
 #include "Figures.hpp"
 #include "GraphView.hpp"
-#include "qgraphicsitem.h"
-#include "qlogging.h"
+#include "ThemeManager.hpp"
 
 #include <QApplication>
 #include <QDebug>
@@ -32,7 +31,7 @@
 Edge::Edge(Figure *start, Figure *end, QGraphicsItem *parent)
     : QGraphicsLineItem(parent), startNode_(start), endNode_(end) {
   setFlag(QGraphicsItem::ItemIsSelectable);
-  setPen(QPen(Qt::black, 2));
+  // setPen(QPen(Qt::black, 2));
   updatePosition();
   qDebug() << "Edge created between" << start << "and" << end;
 }
@@ -80,6 +79,11 @@ void Edge::updatePosition() {
   }
 
   qDebug() << "Edge updated:" << line();
+}
+
+void Edge::updateThemeStyle(const ThemeColors &colors) {
+  setPen(QPen(colors.edgeDefault, 2));
+  update(); // Перерисовать
 }
 
 /**
@@ -178,9 +182,12 @@ void Edge::contextMenuEvent(QGraphicsSceneContextMenuEvent *event) {
  */
 Figure::Figure(qreal x, qreal y, qreal width, qreal height,
                QGraphicsItem *parent)
-    : QGraphicsEllipseItem(x, y, width, height) {
+    : QGraphicsEllipseItem(x, y, width, height, parent) {
   setRect(x, y, width, height);
   setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
+  /*defaultColor_ = Qt::red;
+  hoverColor_ = Qt::yellow;
+  setBrush(defaultColor_);*/
 }
 
 /**
@@ -252,7 +259,7 @@ void Figure::clearOutcomingEdges() {
  * Изменяет цвет заливки на жёлтый для визуальной обратной связи.
  */
 void Figure::hoverEnterEvent(QGraphicsSceneHoverEvent *event) {
-  setBrush(Qt::yellow);
+  setBrush(hoverColor_);
   QGraphicsEllipseItem::hoverEnterEvent(event);
 }
 
@@ -263,7 +270,7 @@ void Figure::hoverEnterEvent(QGraphicsSceneHoverEvent *event) {
  * Возвращает исходный цвет заливки (красный).
  */
 void Figure::hoverLeaveEvent(QGraphicsSceneHoverEvent *event) {
-  setBrush(Qt::red);
+  setBrush(defaultColor_);
   QGraphicsEllipseItem::hoverLeaveEvent(event);
 }
 
@@ -340,4 +347,18 @@ QVariant Figure::itemChange(GraphicsItemChange change, const QVariant &value) {
     }
   }
   return QGraphicsEllipseItem::itemChange(change, value);
+}
+
+void Figure::setHoverColor(const QColor &color) { hoverColor_ = color; }
+
+void Figure::restoreDefaultColor() { setBrush(defaultColor_); }
+
+void Figure::updateThemeStyle(const ThemeColors &colors) {
+  defaultColor_ = colors.nodeDefault;
+  hoverColor_ = colors.nodeHover;
+  borderColor_ = colors.border;
+
+  setBrush(defaultColor_);
+  setPen(QPen(borderColor_, 1));
+  update(); // Перерисовать
 }

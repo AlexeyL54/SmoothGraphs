@@ -14,6 +14,7 @@ set(SOURCES
     src/front/GraphView.cpp
     src/front/Figures.cpp
     src/front/MenuBar.cpp
+    src/front/ThemeManager.cpp
     src/back/Logger.cpp
 )
 
@@ -22,6 +23,7 @@ set(HEADERS
     src/front/GraphView.hpp
     src/front/Figures.hpp
     src/front/MenuBar.hpp
+    src/front/ThemeManager.hpp
     src/back/Graph.hpp
     src/back/Logger.hpp)
 

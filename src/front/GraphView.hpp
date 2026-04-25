@@ -40,6 +40,8 @@ public:
    */
   void startEdgeCreation(Figure *startNode);
 
+  void updateAllElementsTheme(const ThemeColors &colors);
+
 protected:
   /**
    * @brief Обработчик события контекстного меню.

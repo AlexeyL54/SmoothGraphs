@@ -1,5 +1,6 @@
 #pragma once
 
+#include "qcolor.h"
 #include <QGraphicsEllipseItem>
 #include <QGraphicsLineItem>
 #include <QGraphicsSceneContextMenuEvent>
@@ -59,6 +60,8 @@ public:
    */
   Figure *getEndNode() const { return endNode_; }
 
+  void updateThemeStyle(const class ThemeColors &colors);
+
 protected:
   /**
    * @brief Обработчик контекстного меню ребра.
@@ -82,6 +85,10 @@ protected:
 private:
   Figure *startNode_; // Указатель на начальный узел
   Figure *endNode_;   // Указатель на конечный узел
+
+  QColor borderColor_;
+  QColor defaultColor_;
+  QColor hoverColor_;
 
   /**
    * @brief Вычисляет координаты точек для отрисовки стрелки.
@@ -169,6 +176,10 @@ public:
    */
   QPointF getCenter() const { return scenePos() + QPointF(50, 50); }
 
+  void setHoverColor(const QColor &color);
+  void updateThemeStyle(const class ThemeColors &colors);
+  void restoreDefaultColor();
+
 protected:
   /**
    * @brief Обработчик контекстного меню узла.
@@ -210,6 +221,10 @@ protected:
 private:
   QList<Edge *> incomingEdges_; // Список входящих рёбер
   QList<Edge *> outgoingEdges_; // Список исходящих рёбер
+
+  QColor defaultColor_;
+  QColor hoverColor_;
+  QColor borderColor_;
 
   /**
    * @brief Запускает процесс создания ребра от текущего узла.

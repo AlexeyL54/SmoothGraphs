@@ -55,6 +55,24 @@ void GraphView::startEdgeCreation(Figure *startNode) {
   scene_->addItem(tempEdge_);
 }
 
+void GraphView::updateAllElementsTheme(const ThemeColors &colors) {
+  if (!scene_)
+    return;
+
+  QList<QGraphicsItem *> items = scene_->items();
+  for (QGraphicsItem *item : items) {
+    Figure *figure = dynamic_cast<Figure *>(item);
+    if (figure) {
+      figure->updateThemeStyle(colors);
+    }
+
+    Edge *edge = dynamic_cast<Edge *>(item);
+    if (edge) {
+      edge->updateThemeStyle(colors);
+    }
+  }
+}
+
 /**
  * @brief Обработчик события перемещения мыши.
  * @param event Указатель на событие мыши.
@@ -140,7 +158,7 @@ void GraphView::mousePressEvent(QMouseEvent *event) {
  */
 void GraphView::addFigure() {
   Figure *fig = new Figure(0, 0, 100, 100);
-  fig->setBrush(Qt::red);
+  // fig->setBrush(Qt::red);
   fig->setFlag(QGraphicsItem::ItemIsMovable);
   fig->setAcceptHoverEvents(true);
 
