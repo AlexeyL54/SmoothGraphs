@@ -38,7 +38,7 @@ public:
    * Метод активирует режим создания ребра: устанавливает курсор,
    * создаёт временное пунктирное ребро и отслеживает перемещение мыши.
    */
-  void startEdgeCreation(Figure *startNode);
+  void startEdgeCreation(SmoothNode *startNode);
 
   void updateAllElementsTheme(const ThemeColors &colors);
 
@@ -73,9 +73,9 @@ protected:
   void mouseMoveEvent(QMouseEvent *event) override;
 
 private:
-  QGraphicsScene *scene_;       // Указатель на управляемую сцену
-  bool isCreatingEdge_ = false; // Флаг активного режима создания ребра
-  Figure *startNode_ = nullptr; // Начальный узел для создаваемого ребра
+  QGraphicsScene *scene_;           // Указатель на управляемую сцену
+  bool isCreatingEdge_ = false;     // Флаг активного режима создания ребра
+  SmoothNode *startNode_ = nullptr; // Начальный узел для создаваемого ребра
   QGraphicsLineItem *tempEdge_ = nullptr; // Временное ребро для визуализации
   QPointF startPos_; // Стартовая позиция для отрисовки ребра
 

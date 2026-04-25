@@ -19,8 +19,6 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-// ======================== Edge Implementation ========================
-
 /**
  * @brief Конструктор ребра.
  * @param start Указатель на начальный узел.
@@ -28,7 +26,8 @@
  * @param parent Родительский элемент (по умолчанию nullptr).
  */
 
-Edge::Edge(Figure *start, Figure *end, QGraphicsItem *parent)
+SmoothEdge::SmoothEdge(SmoothNode *start, SmoothNode *end,
+                       QGraphicsItem *parent)
     : QGraphicsLineItem(parent), startNode_(start), endNode_(end) {
   setFlag(QGraphicsItem::ItemIsSelectable);
   // setPen(QPen(Qt::black, 2));
@@ -41,7 +40,7 @@ Edge::Edge(Figure *start, Figure *end, QGraphicsItem *parent)
  *
  * Автоматически удаляет ссылки на данное ребро из связанных узлов.
  */
-Edge::~Edge() {
+SmoothEdge::~SmoothEdge() {
   qDebug() << "Edge destroyed";
   if (endNode_)
     endNode_->removeIncomingEdge(this);
@@ -55,7 +54,7 @@ Edge::~Edge() {
  * Вычисляет новые координаты линии на основе центров начального
  * и конечного узлов. Поддерживает отрисовку петель (ребро в себя).
  */
-void Edge::updatePosition() {
+void SmoothEdge::updatePosition() {
   if (!startNode_ || !endNode_) {
     qDebug() << "updatePosition: null nodes";
     return;
@@ -81,7 +80,7 @@ void Edge::updatePosition() {
   qDebug() << "Edge updated:" << line();
 }
 
-void Edge::updateThemeStyle(const ThemeColors &colors) {
+void SmoothEdge::updateThemeStyle(const ThemeColors &colors) {
   setPen(QPen(colors.edgeDefault, 2));
   update(); // Перерисовать
 }
@@ -91,7 +90,7 @@ void Edge::updateThemeStyle(const ThemeColors &colors) {
  * @param line Ссылка на линию ребра.
  * @return Пара точек (QPointF), определяющих вершины стрелки.
  */
-std::pair<QPointF, QPointF> Edge::computeArrowPos(QLineF &line) {
+std::pair<QPointF, QPointF> SmoothEdge::computeArrowPos(QLineF &line) {
   double angle = std::atan2(-line.dy(), line.dx());
   QPointF endPt = line.p2();
   qreal arrowSize = 20.0;
@@ -112,7 +111,8 @@ std::pair<QPointF, QPointF> Edge::computeArrowPos(QLineF &line) {
  * @param p1 Первая вершина стрелки.
  * @param p2 Вторая вершина стрелки.
  */
-void Edge::paintArrow(QPainter *painter, QLineF &line, QPointF p1, QPointF p2) {
+void SmoothEdge::paintArrow(QPainter *painter, QLineF &line, QPointF p1,
+                            QPointF p2) {
   painter->setPen(Qt::NoPen);
   painter->setBrush(pen().color());
 
@@ -133,8 +133,9 @@ void Edge::paintArrow(QPainter *painter, QLineF &line, QPointF p1, QPointF p2) {
  *
  * Отрисовывает линию ребра и стрелку на конце.
  */
-void Edge::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
-                 QWidget *widget) {
+void SmoothEdge::paint(QPainter *painter,
+                       const QStyleOptionGraphicsItem *option,
+                       QWidget *widget) {
   Q_UNUSED(option);
   Q_UNUSED(widget);
 
@@ -156,7 +157,7 @@ void Edge::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
  *
  * Отображает меню с опцией "Удалить ребро".
  */
-void Edge::contextMenuEvent(QGraphicsSceneContextMenuEvent *event) {
+void SmoothEdge::contextMenuEvent(QGraphicsSceneContextMenuEvent *event) {
   QMenu menu;
   QAction *deleteAction = menu.addAction("Удалить ребро");
   QAction *weightAction = menu.addAction("Изменить вес");
@@ -170,7 +171,7 @@ void Edge::contextMenuEvent(QGraphicsSceneContextMenuEvent *event) {
   event->accept();
 }
 
-// ======================== Figure Implementation ========================
+//////////////////////////////////////////////////////////////////////////
 
 /**
  * @brief Конструктор узла графа.
@@ -180,8 +181,8 @@ void Edge::contextMenuEvent(QGraphicsSceneContextMenuEvent *event) {
  * @param height Высота фигуры.
  * @param parent Родительский элемент (по умолчанию nullptr).
  */
-Figure::Figure(qreal x, qreal y, qreal width, qreal height,
-               QGraphicsItem *parent)
+SmoothNode::SmoothNode(qreal x, qreal y, qreal width, qreal height,
+                       QGraphicsItem *parent)
     : QGraphicsEllipseItem(x, y, width, height, parent) {
   setRect(x, y, width, height);
   setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
@@ -196,7 +197,7 @@ Figure::Figure(qreal x, qreal y, qreal width, qreal height,
  *
  * Проверяет на дубликаты перед добавлением в список.
  */
-void Figure::addIncomingEdge(Edge *edge) {
+void SmoothNode::addIncomingEdge(SmoothEdge *edge) {
   if (!incomingEdges_.contains(edge)) {
     incomingEdges_.append(edge);
     qDebug() << "Added incoming edge to" << this
@@ -210,7 +211,7 @@ void Figure::addIncomingEdge(Edge *edge) {
  *
  * Проверяет на дубликаты перед добавлением в список.
  */
-void Figure::addOutgoingEdge(Edge *edge) {
+void SmoothNode::addOutgoingEdge(SmoothEdge *edge) {
   if (!outgoingEdges_.contains(edge)) {
     outgoingEdges_.append(edge);
     qDebug() << "Added outgoing edge from" << this
@@ -222,7 +223,7 @@ void Figure::addOutgoingEdge(Edge *edge) {
  * @brief Удаляет входящее ребро из списка узла.
  * @param edge Указатель на удаляемое ребро.
  */
-void Figure::removeIncomingEdge(Edge *edge) {
+void SmoothNode::removeIncomingEdge(SmoothEdge *edge) {
   incomingEdges_.removeOne(edge);
   qDebug() << "Removed incoming edge from" << this;
 }
@@ -231,7 +232,7 @@ void Figure::removeIncomingEdge(Edge *edge) {
  * @brief Удаляет исходящее ребро из списка узла.
  * @param edge Указатель на удаляемое ребро.
  */
-void Figure::removeOutgoingEdge(Edge *edge) {
+void SmoothNode::removeOutgoingEdge(SmoothEdge *edge) {
   outgoingEdges_.removeOne(edge);
   qDebug() << "Removed outgoing edge from" << this;
 }
@@ -239,7 +240,7 @@ void Figure::removeOutgoingEdge(Edge *edge) {
 /**
  * @brief Очищает список входящих ребер
  */
-void Figure::clearIncomingEdges() {
+void SmoothNode::clearIncomingEdges() {
   incomingEdges_.clear();
   qDebug() << "Removed all incoming edges" << this;
 }
@@ -247,7 +248,7 @@ void Figure::clearIncomingEdges() {
 /**
  * @brief Очищает список исходящих ребер
  */
-void Figure::clearOutcomingEdges() {
+void SmoothNode::clearOutcomingEdges() {
   outgoingEdges_.clear();
   qDebug() << "Removed all outcoming edges" << this;
 }
@@ -258,7 +259,7 @@ void Figure::clearOutcomingEdges() {
  *
  * Изменяет цвет заливки на жёлтый для визуальной обратной связи.
  */
-void Figure::hoverEnterEvent(QGraphicsSceneHoverEvent *event) {
+void SmoothNode::hoverEnterEvent(QGraphicsSceneHoverEvent *event) {
   setBrush(hoverColor_);
   QGraphicsEllipseItem::hoverEnterEvent(event);
 }
@@ -269,7 +270,7 @@ void Figure::hoverEnterEvent(QGraphicsSceneHoverEvent *event) {
  *
  * Возвращает исходный цвет заливки (красный).
  */
-void Figure::hoverLeaveEvent(QGraphicsSceneHoverEvent *event) {
+void SmoothNode::hoverLeaveEvent(QGraphicsSceneHoverEvent *event) {
   setBrush(defaultColor_);
   QGraphicsEllipseItem::hoverLeaveEvent(event);
 }
@@ -279,7 +280,7 @@ void Figure::hoverLeaveEvent(QGraphicsSceneHoverEvent *event) {
  *
  * Находит родительский GraphView и вызывает его метод startEdgeCreation.
  */
-void Figure::addEdge() {
+void SmoothNode::addEdge() {
   if (scene()) {
     for (QGraphicsView *view : scene()->views()) {
       GraphView *gv = qobject_cast<GraphView *>(view);
@@ -300,7 +301,7 @@ void Figure::addEdge() {
  * - "Добавить грань" — начинает создание ребра от этого узла
  * - "Удалить узел" — удаляет узел и все связанные рёбра
  */
-void Figure::contextMenuEvent(QGraphicsSceneContextMenuEvent *event) {
+void SmoothNode::contextMenuEvent(QGraphicsSceneContextMenuEvent *event) {
   QMenu menu;
   QAction *addEdgeAction = menu.addAction("Добавить грань");
   QAction *deleteNodeAction = menu.addAction("Удалить узел");
@@ -309,11 +310,11 @@ void Figure::contextMenuEvent(QGraphicsSceneContextMenuEvent *event) {
                    [this]() { this->addEdge(); });
   QObject::connect(deleteNodeAction, &QAction::triggered, [this]() {
     // Удаляем все связанные рёбра
-    for (Edge *edge : incomingEdges_) {
+    for (SmoothEdge *edge : incomingEdges_) {
       if (scene())
         scene()->removeItem(edge);
     }
-    for (Edge *edge : outgoingEdges_) {
+    for (SmoothEdge *edge : outgoingEdges_) {
       if (scene())
         scene()->removeItem(edge);
     }
@@ -333,15 +334,16 @@ void Figure::contextMenuEvent(QGraphicsSceneContextMenuEvent *event) {
  *
  * При изменении позиции автоматически обновляет все связанные рёбра.
  */
-QVariant Figure::itemChange(GraphicsItemChange change, const QVariant &value) {
+QVariant SmoothNode::itemChange(GraphicsItemChange change,
+                                const QVariant &value) {
   if (change == ItemPositionHasChanged) {
-    qDebug() << "Figure" << this << "moved to" << value.toPointF();
+    qDebug() << "SmoothNode" << this << "moved to" << value.toPointF();
     // Обновляем все связанные рёбра
-    for (Edge *edge : incomingEdges_) {
+    for (SmoothEdge *edge : incomingEdges_) {
       qDebug() << "Updating incoming edge";
       edge->updatePosition();
     }
-    for (Edge *edge : outgoingEdges_) {
+    for (SmoothEdge *edge : outgoingEdges_) {
       qDebug() << "Updating outgoing edge";
       edge->updatePosition();
     }
@@ -349,11 +351,11 @@ QVariant Figure::itemChange(GraphicsItemChange change, const QVariant &value) {
   return QGraphicsEllipseItem::itemChange(change, value);
 }
 
-void Figure::setHoverColor(const QColor &color) { hoverColor_ = color; }
+void SmoothNode::setHoverColor(const QColor &color) { hoverColor_ = color; }
 
-void Figure::restoreDefaultColor() { setBrush(defaultColor_); }
+void SmoothNode::restoreDefaultColor() { setBrush(defaultColor_); }
 
-void Figure::updateThemeStyle(const ThemeColors &colors) {
+void SmoothNode::updateThemeStyle(const ThemeColors &colors) {
   defaultColor_ = colors.nodeDefault;
   hoverColor_ = colors.nodeHover;
   borderColor_ = colors.border;

@@ -1,20 +1,21 @@
 #pragma once
 
-#include "qcolor.h"
+#include <QColor>
 #include <QGraphicsEllipseItem>
 #include <QGraphicsLineItem>
+#include <QGraphicsScale>
 #include <QGraphicsSceneContextMenuEvent>
 #include <QGraphicsSceneHoverEvent>
 #include <QList>
+#include <QMenu>
 #include <QPainter>
 #include <QPen>
 #include <QPointF>
-#include <utility>
 
-class Figure;
+class SmoothNode;
 
 /**
- * @class Edge
+ * @class SmoothEdge
  * @brief Класс, представляющий ребро графа между двумя узлами.
  *
  * Наследуется от QGraphicsLineItem и добавляет:
@@ -23,7 +24,7 @@ class Figure;
  * - Автоматическое обновление позиции при перемещении узлов
  * - Управление связями с узлами (входящие/исходящие)
  */
-class Edge : public QGraphicsLineItem {
+class SmoothEdge : public QGraphicsLineItem {
 public:
   /**
    * @brief Конструктор ребра.
@@ -31,14 +32,15 @@ public:
    * @param end Указатель на конечный узел.
    * @param parent Родительский элемент (по умолчанию nullptr).
    */
-  Edge(Figure *start, Figure *end, QGraphicsItem *parent = nullptr);
+  SmoothEdge(SmoothNode *start, SmoothNode *end,
+             QGraphicsItem *parent = nullptr);
 
   /**
    * @brief Деструктор ребра.
    *
    * Автоматически удаляет ссылки на данное ребро из связанных узлов.
    */
-  ~Edge();
+  ~SmoothEdge();
 
   /**
    * @brief Обновляет геометрическую позицию ребра.
@@ -50,15 +52,15 @@ public:
 
   /**
    * @brief Возвращает начальный узел ребра.
-   * @return Указатель на начальный узел (Figure*).
+   * @return Указатель на начальный узел (SmoothNode*).
    */
-  Figure *getStartNode() const { return startNode_; }
+  SmoothNode *getStartNode() const { return startNode_; }
 
   /**
    * @brief Возвращает конечный узел ребра.
-   * @return Указатель на конечный узел (Figure*).
+   * @return Указатель на конечный узел (SmoothNode*).
    */
-  Figure *getEndNode() const { return endNode_; }
+  SmoothNode *getEndNode() const { return endNode_; }
 
   void updateThemeStyle(const class ThemeColors &colors);
 
@@ -83,8 +85,8 @@ protected:
              QWidget *widget) override;
 
 private:
-  Figure *startNode_; // Указатель на начальный узел
-  Figure *endNode_;   // Указатель на конечный узел
+  SmoothNode *startNode_; // Указатель на начальный узел
+  SmoothNode *endNode_;   // Указатель на конечный узел
 
   QColor borderColor_;
   QColor defaultColor_;
@@ -107,10 +109,10 @@ private:
   void paintArrow(QPainter *painter, QLineF &line, QPointF p1, QPointF p2);
 };
 
-/////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
 
 /**
- * @class Figure
+ * @class SmoothNode
  * @brief Класс, представляющий узел графа (визуальный элемент).
  *
  * Наследуется от QGraphicsEllipseItem и предоставляет:
@@ -119,7 +121,7 @@ private:
  * - Контекстное меню для добавления рёбер и удаления узла
  * - Автоматическое обновление связанных рёбер при перемещении
  */
-class Figure : public QGraphicsEllipseItem {
+class SmoothNode : public QGraphicsEllipseItem {
 public:
   /**
    * @brief Конструктор узла графа.
@@ -129,8 +131,8 @@ public:
    * @param height Высота фигуры.
    * @param parent Родительский элемент (по умолчанию nullptr).
    */
-  Figure(qreal x, qreal y, qreal width, qreal height,
-         QGraphicsItem *parent = nullptr);
+  SmoothNode(qreal x, qreal y, qreal width, qreal height,
+             QGraphicsItem *parent = nullptr);
 
   /**
    * @brief Добавляет входящее ребро к узлу.
@@ -138,7 +140,7 @@ public:
    *
    * Проверяет на дубликаты перед добавлением в список.
    */
-  void addIncomingEdge(Edge *edge);
+  void addIncomingEdge(SmoothEdge *edge);
 
   /**
    * @brief Добавляет исходящее ребро от узла.
@@ -146,19 +148,19 @@ public:
    *
    * Проверяет на дубликаты перед добавлением в список.
    */
-  void addOutgoingEdge(Edge *edge);
+  void addOutgoingEdge(SmoothEdge *edge);
 
   /**
    * @brief Удаляет входящее ребро из списка узла.
    * @param edge Указатель на удаляемое ребро.
    */
-  void removeIncomingEdge(Edge *edge);
+  void removeIncomingEdge(SmoothEdge *edge);
 
   /**
    * @brief Удаляет исходящее ребро из списка узла.
    * @param edge Указатель на удаляемое ребро.
    */
-  void removeOutgoingEdge(Edge *edge);
+  void removeOutgoingEdge(SmoothEdge *edge);
 
   /**
    * @brief Очищает список входящих ребер
@@ -219,8 +221,8 @@ protected:
                       const QVariant &value) override;
 
 private:
-  QList<Edge *> incomingEdges_; // Список входящих рёбер
-  QList<Edge *> outgoingEdges_; // Список исходящих рёбер
+  QList<SmoothEdge *> incomingEdges_; // Список входящих рёбер
+  QList<SmoothEdge *> outgoingEdges_; // Список исходящих рёбер
 
   QColor defaultColor_;
   QColor hoverColor_;

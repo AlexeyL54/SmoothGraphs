@@ -2,10 +2,7 @@
 #include "Figures.hpp"
 #include "MenuBar.hpp"
 #include "ThemeManager.hpp"
-#include "qevent.h"
-#include "qgraphicsscene.h"
-#include "qgraphicsview.h"
-#include "qwidget.h"
+
 #include <QVBoxLayout>
 
 MainWindow::MainWindow(ThemeManager &themeMng, QWidget *parent)
@@ -323,14 +320,14 @@ void MainWindow::updateGraphColors() {
 
   QList<QGraphicsItem *> items = graphView_->scene()->items();
   for (QGraphicsItem *item : items) {
-    Figure *figure = dynamic_cast<Figure *>(item);
+    SmoothNode *figure = dynamic_cast<SmoothNode *>(item);
     if (figure) {
       figure->setBrush(colors.nodeDefault);
       figure->setPen(QPen(colors.border, 1));
       figure->setHoverColor(colors.nodeHover);
     }
 
-    Edge *edge = dynamic_cast<Edge *>(item);
+    SmoothEdge *edge = dynamic_cast<SmoothEdge *>(item);
     if (edge) {
       edge->setPen(QPen(colors.edgeDefault, 2));
     }

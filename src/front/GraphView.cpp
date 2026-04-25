@@ -43,7 +43,7 @@ void GraphView::contextMenuEvent(QContextMenuEvent *event) {
  * Метод активирует режим создания ребра: устанавливает курсор,
  * создаёт временное пунктирное ребро и отслеживает перемещение мыши.
  */
-void GraphView::startEdgeCreation(Figure *startNode) {
+void GraphView::startEdgeCreation(SmoothNode *startNode) {
   isCreatingEdge_ = true;
   startNode_ = startNode;
   startPos_ = startNode->scenePos() + QPointF(50, 50);
@@ -61,12 +61,12 @@ void GraphView::updateAllElementsTheme(const ThemeColors &colors) {
 
   QList<QGraphicsItem *> items = scene_->items();
   for (QGraphicsItem *item : items) {
-    Figure *figure = dynamic_cast<Figure *>(item);
+    SmoothNode *figure = dynamic_cast<SmoothNode *>(item);
     if (figure) {
       figure->updateThemeStyle(colors);
     }
 
-    Edge *edge = dynamic_cast<Edge *>(item);
+    SmoothEdge *edge = dynamic_cast<SmoothEdge *>(item);
     if (edge) {
       edge->updateThemeStyle(colors);
     }
@@ -102,7 +102,7 @@ void GraphView::mousePressEvent(QMouseEvent *event) {
     if (event->button() == Qt::LeftButton) {
       QPointF scenePos = mapToScene(event->pos());
       QGraphicsItem *item = scene_->itemAt(scenePos, QTransform());
-      Figure *endNode = dynamic_cast<Figure *>(item);
+      SmoothNode *endNode = dynamic_cast<SmoothNode *>(item);
 
       if (endNode && endNode != startNode_) {
         if (tempEdge_) {
@@ -111,7 +111,7 @@ void GraphView::mousePressEvent(QMouseEvent *event) {
           tempEdge_ = nullptr;
         }
 
-        Edge *finalEdge = new Edge(startNode_, endNode);
+        SmoothEdge *finalEdge = new SmoothEdge(startNode_, endNode);
         scene_->addItem(finalEdge);
 
         // ВАЖНО: добавляем ребро в оба узла
@@ -157,7 +157,7 @@ void GraphView::mousePressEvent(QMouseEvent *event) {
  * и добавляет его в сцену.
  */
 void GraphView::addFigure() {
-  Figure *fig = new Figure(0, 0, 100, 100);
+  SmoothNode *fig = new SmoothNode(0, 0, 100, 100);
   // fig->setBrush(Qt::red);
   fig->setFlag(QGraphicsItem::ItemIsMovable);
   fig->setAcceptHoverEvents(true);
@@ -186,12 +186,12 @@ void GraphView::clear() {
 
   // Сначала удаляем все рёбра вручную (отвязывая их перед удалением)
   for (QGraphicsItem *item : items) {
-    Edge *edge = dynamic_cast<Edge *>(item);
+    SmoothEdge *edge = dynamic_cast<SmoothEdge *>(item);
     if (edge) {
       qDebug() << "Removing edge manually";
       // Отвязываем ребро от узлов перед удалением
-      Figure *start = edge->getStartNode();
-      Figure *end = edge->getEndNode();
+      SmoothNode *start = edge->getStartNode();
+      SmoothNode *end = edge->getEndNode();
       if (start) {
         start->removeOutgoingEdge(edge);
       }
@@ -207,7 +207,7 @@ void GraphView::clear() {
   // Теперь удаляем все фигуры
   items = scene_->items(); // Обновляем список (рёбер уже нет)
   for (QGraphicsItem *item : items) {
-    Figure *fig = dynamic_cast<Figure *>(item);
+    SmoothNode *fig = dynamic_cast<SmoothNode *>(item);
     if (fig) {
       qDebug() << "Removing figure manually";
       // Очищаем списки (хотя они уже должны быть пусты)
