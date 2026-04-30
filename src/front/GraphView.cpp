@@ -1,3 +1,4 @@
+// GraphView.cpp
 #include "GraphView.hpp"
 #include "Figures.hpp"
 
@@ -28,7 +29,7 @@ void GraphView::contextMenuEvent(QContextMenuEvent *event) {
     QAction *clearAction = menu.addAction("Очистить все");
 
     connect(addFigAction, &QAction::triggered, this, &GraphView::addFigure);
-    connect(clearAction, &QAction::triggered, this, &GraphView::clear);
+    connect(clearAction, &QAction::triggered, this, &GraphView::clearScene);
 
     menu.exec(event->globalPos());
   } else {
@@ -55,6 +56,10 @@ void GraphView::startEdgeCreation(SmoothNode *startNode) {
   scene_->addItem(tempEdge_);
 }
 
+/**
+ * @brief Обновляет стиль всех элементов на сцене.
+ * @param colors Структура с цветами текущей темы.
+ */
 void GraphView::updateAllElementsTheme(const ThemeColors &colors) {
   if (!scene_)
     return;
@@ -113,8 +118,9 @@ void GraphView::mousePressEvent(QMouseEvent *event) {
 
         SmoothEdge *finalEdge = new SmoothEdge(startNode_, endNode);
         scene_->addItem(finalEdge);
+        emit edgeAdded(finalEdge); // Сигнал о добавлении ребра
 
-        // ВАЖНО: добавляем ребро в оба узла
+        // Добавляем ребро в оба узла
         startNode_->addOutgoingEdge(finalEdge);
         endNode->addIncomingEdge(finalEdge);
 
@@ -153,26 +159,28 @@ void GraphView::mousePressEvent(QMouseEvent *event) {
 /**
  * @brief Слот для добавления новой фигуры на сцену.
  *
- * Создаёт экземпляр Figure красного цвета, разрешает перемещение
- * и добавляет его в сцену.
+ * Создаёт экземпляр Figure, разрешает перемещение
+ * и добавляет его в сцену. Испускает сигнал nodeAdded.
  */
 void GraphView::addFigure() {
   SmoothNode *fig = new SmoothNode(0, 0, 100, 100);
-  // fig->setBrush(Qt::red);
   fig->setFlag(QGraphicsItem::ItemIsMovable);
   fig->setAcceptHoverEvents(true);
 
-  if (scene_)
+  if (scene_) {
     scene_->addItem(fig);
+    emit nodeAdded(fig); // Сигнал о добавлении узла
+    qDebug() << "Figure added to scene, signal emitted";
+  }
 }
 
 /**
  * @brief Слот для очистки сцены.
  *
  * Удаляет все элементы со сцены и сбрасывает внутренние состояния,
- * связанные с созданием рёбер.
+ * связанные с созданием рёбер. Испускает сигналы nodeRemoved и edgeRemoved.
  */
-void GraphView::clear() {
+void GraphView::clearScene() {
   if (!scene_)
     return;
 
@@ -189,6 +197,8 @@ void GraphView::clear() {
     SmoothEdge *edge = dynamic_cast<SmoothEdge *>(item);
     if (edge) {
       qDebug() << "Removing edge manually";
+      emit edgeRemoved(edge); // Сигнал об удалении ребра
+
       // Отвязываем ребро от узлов перед удалением
       SmoothNode *start = edge->getStartNode();
       SmoothNode *end = edge->getEndNode();
@@ -210,6 +220,8 @@ void GraphView::clear() {
     SmoothNode *fig = dynamic_cast<SmoothNode *>(item);
     if (fig) {
       qDebug() << "Removing figure manually";
+      emit nodeRemoved(fig); // Сигнал об удалении узла
+
       // Очищаем списки (хотя они уже должны быть пусты)
       fig->clearIncomingEdges();
       fig->clearOutcomingEdges();
@@ -224,7 +236,6 @@ void GraphView::clear() {
   // Сбрасываем указатели
   startNode_ = nullptr;
   if (tempEdge_) {
-    // tempEdge_ уже должен быть удалён
     tempEdge_ = nullptr;
   }
 

@@ -1,3 +1,4 @@
+// GraphView.hpp
 #pragma once
 
 #include <QContextMenuEvent>
@@ -40,7 +41,44 @@ public:
    */
   void startEdgeCreation(SmoothNode *startNode);
 
+  /**
+   * @brief Обновляет стиль всех элементов на сцене.
+   * @param colors Структура с цветами текущей темы.
+   */
   void updateAllElementsTheme(const ThemeColors &colors);
+
+  /**
+   * @brief Очищает сцену с правильным порядком удаления элементов.
+   *
+   * Сначала удаляет все рёбра (отвязывая их от узлов),
+   * затем удаляет все узлы. Это предотвращает ошибки при удалении.
+   */
+  void clearScene();
+
+signals:
+  /**
+   * @brief Сигнал о добавлении нового узла на сцену.
+   * @param node Указатель на добавленный узел.
+   */
+  void nodeAdded(SmoothNode *node);
+
+  /**
+   * @brief Сигнал о добавлении нового ребра на сцену.
+   * @param edge Указатель на добавленное ребро.
+   */
+  void edgeAdded(SmoothEdge *edge);
+
+  /**
+   * @brief Сигнал об удалении узла со сцены.
+   * @param node Указатель на удаляемый узел.
+   */
+  void nodeRemoved(SmoothNode *node);
+
+  /**
+   * @brief Сигнал об удалении ребра со сцены.
+   * @param edge Указатель на удаляемое ребро.
+   */
+  void edgeRemoved(SmoothEdge *edge);
 
 protected:
   /**
@@ -83,8 +121,8 @@ private slots:
   /**
    * @brief Слот для добавления новой фигуры на сцену.
    *
-   * Создаёт экземпляр Figure красного цвета, разрешает перемещение
-   * и добавляет его в сцену.
+   * Создаёт экземпляр Figure, разрешает перемещение
+   * и добавляет его в сцену. Испускает сигнал nodeAdded.
    */
   void addFigure();
 
@@ -92,7 +130,7 @@ private slots:
    * @brief Слот для очистки сцены.
    *
    * Удаляет все элементы со сцены и сбрасывает внутренние состояния,
-   * связанные с созданием рёбер.
+   * связанные с созданием рёбер. Испускает сигналы nodeRemoved и edgeRemoved.
    */
-  void clear();
+  // void clear();
 };

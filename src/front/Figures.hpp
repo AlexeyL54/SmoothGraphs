@@ -11,6 +11,7 @@
 #include <QPainter>
 #include <QPen>
 #include <QPointF>
+#include <cstddef>
 
 class SmoothNode;
 
@@ -62,6 +63,10 @@ public:
    */
   SmoothNode *getEndNode() const { return endNode_; }
 
+  void setWeight(float weight) { weight_ = weight; }
+
+  float getWeight() const { return weight_; }
+
   void updateThemeStyle(const class ThemeColors &colors);
 
 protected:
@@ -87,6 +92,7 @@ protected:
 private:
   SmoothNode *startNode_; // Указатель на начальный узел
   SmoothNode *endNode_;   // Указатель на конечный узел
+  float weight_;
 
   QColor borderColor_;
   QColor defaultColor_;
@@ -182,6 +188,21 @@ public:
   void updateThemeStyle(const class ThemeColors &colors);
   void restoreDefaultColor();
 
+  QList<SmoothEdge *> getIncomingEdges();
+  QList<SmoothEdge *> getOutcomingEdges();
+
+  /**
+   * @brief Устанавливает ID узла.
+   * @param id Уникальный идентификатор узла.
+   */
+  void setId(size_t id) { id_ = id; }
+
+  /**
+   * @brief Возвращает ID узла.
+   * @return ID узла.
+   */
+  size_t getId() const { return id_; }
+
 protected:
   /**
    * @brief Обработчик контекстного меню узла.
@@ -227,6 +248,8 @@ private:
   QColor defaultColor_;
   QColor hoverColor_;
   QColor borderColor_;
+
+  size_t id_;
 
   /**
    * @brief Запускает процесс создания ребра от текущего узла.

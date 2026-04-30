@@ -1,27 +1,85 @@
+// MainWindow.cpp
 #include "MainWindow.hpp"
 #include "Figures.hpp"
 #include "MenuBar.hpp"
 #include "ThemeManager.hpp"
 
+#include <QFileDialog>
+#include <QMessageBox>
 #include <QVBoxLayout>
 
+/**
+ * @brief Конструктор главного окна.
+ * @param themeMng Менеджер тем для управления оформлением.
+ * @param parent Родительский виджет (по умолчанию nullptr).
+ */
 MainWindow::MainWindow(ThemeManager &themeMng, QWidget *parent)
-    : QWidget(parent) {
+    : QWidget(parent), graph_(new Graph()) {
   themeMng_ = &themeMng;
 
+  // Создаём сцену для графа
   QGraphicsScene *scene = new QGraphicsScene(this);
   scene->setSceneRect(-200, -200, 400, 400);
 
+  // Создаём представление графа
   graphView_ = new GraphView(scene, this);
   graphView_->setRenderHint(QPainter::Antialiasing);
   graphView_->setDragMode(QGraphicsView::RubberBandDrag);
 
+  // Создаём менюбар
   menuBar_ = new MenuBar(this);
 
+  // Устанавливаем начальные размеры и позиции
   graphView_->setGeometry(0, 0, width(), height());
   menuBar_->setGeometry(10, 10, width() - 20, menuBar_->maxHeight() + 40);
 
+  // Поднимаем менюбар на передний план
   menuBar_->raise();
+
+  // ========== Подключаем сигналы от GraphView к Graph ==========
+  // Сигнал добавления узла
+  connect(graphView_, &GraphView::nodeAdded, this, [this](SmoothNode *node) {
+    if (node) {
+      graph_->addNode(node);
+      qDebug() << "Node added to graph with ID:" << node->getId();
+    }
+  });
+
+  // Сигнал добавления ребра
+  connect(graphView_, &GraphView::edgeAdded, this, [this](SmoothEdge *edge) {
+    if (edge) {
+      graph_->addEdge(edge);
+      qDebug() << "Edge added to graph";
+    }
+  });
+
+  // Сигнал удаления узла
+  connect(graphView_, &GraphView::nodeRemoved, this, [this](SmoothNode *node) {
+    if (node) {
+      ID id = graph_->getNodeId(node);
+      if (id != 0) {
+        graph_->deleteNode(id);
+        qDebug() << "Node removed from graph with ID:" << id;
+      }
+    }
+  });
+
+  // Сигнал удаления ребра
+  connect(graphView_, &GraphView::edgeRemoved, this, [this](SmoothEdge *edge) {
+    if (edge) {
+      SmoothNode *start = edge->getStartNode();
+      SmoothNode *end = edge->getEndNode();
+      if (start && end) {
+        ID from = graph_->getNodeId(start);
+        ID to = graph_->getNodeId(end);
+        if (from != 0 && to != 0) {
+          graph_->deleteEdge(from, to);
+          qDebug() << "Edge removed from graph:" << from << "->" << to;
+        }
+      }
+    }
+  });
+  // ========== Конец подключения сигналов ==========
 
   // Подключаем сигнал изменения темы от меню
   if (menuBar_->getThemeBtn() && menuBar_->getThemeBtn()->menu()) {
@@ -32,6 +90,12 @@ MainWindow::MainWindow(ThemeManager &themeMng, QWidget *parent)
             });
   }
 
+  // Подключаем сигналы для кнопок сохранения и открытия
+  connect(menuBar_->getSaveBtn(), &QPushButton::clicked, this,
+          &MainWindow::onSaveGraph);
+  connect(menuBar_->getOpenBtn(), &QPushButton::clicked, this,
+          &MainWindow::onOpenGraph);
+
   // Подключаем сигнал изменения темы для обновления UI
   connect(themeMng_, &ThemeManager::themeChanged, this,
           &MainWindow::onThemeChanged);
@@ -40,9 +104,33 @@ MainWindow::MainWindow(ThemeManager &themeMng, QWidget *parent)
   updateStyle();
 }
 
-// Остальные методы MainWindow остаются без изменений...
+/**
+ * @brief Обработчик события изменения размера окна.
+ * @param event Событие изменения размера.
+ *
+ * Адаптирует размеры GraphView и MenuBar при изменении размера окна.
+ */
+void MainWindow::resizeEvent(QResizeEvent *event) {
+  QWidget::resizeEvent(event);
+  if (graphView_) {
+    graphView_->setGeometry(0, 0, width(), height());
+  }
+  if (menuBar_) {
+    menuBar_->setGeometry(10, 10, width() - 20, menuBar_->height());
+  }
+}
+
+/**
+ * @brief Слот для обработки изменения темы.
+ *
+ * Вызывает updateStyle() для применения новой темы.
+ */
 void MainWindow::onThemeChanged() { updateStyle(); }
 
+/**
+ * @brief Генерирует глобальную таблицу стилей для всего приложения.
+ * @return QString с CSS стилями.
+ */
 QString MainWindow::generateGlobalStyleSheet() const {
   ThemeColors colors = themeMng_->getThemeColors();
 
@@ -201,6 +289,10 @@ QString MainWindow::generateGlobalStyleSheet() const {
       .arg(colors.hover.name());
 }
 
+/**
+ * @brief Генерирует таблицу стилей для менюбара.
+ * @return QString с CSS стилями.
+ */
 QString MainWindow::generateMenuBarStyleSheet() const {
   ThemeColors colors = themeMng_->getThemeColors();
 
@@ -299,6 +391,10 @@ QString MainWindow::generateMenuBarStyleSheet() const {
       .arg(colors.border.name());
 }
 
+/**
+ * @brief Генерирует таблицу стилей для графового представления.
+ * @return QString с CSS стилями.
+ */
 QString MainWindow::generateGraphViewStyleSheet() const {
   ThemeColors colors = themeMng_->getThemeColors();
 
@@ -312,6 +408,9 @@ QString MainWindow::generateGraphViewStyleSheet() const {
       .arg(colors.background.name());
 }
 
+/**
+ * @brief Обновляет цвета всех узлов и рёбер на сцене.
+ */
 void MainWindow::updateGraphColors() {
   if (!graphView_ || !graphView_->scene())
     return;
@@ -322,18 +421,19 @@ void MainWindow::updateGraphColors() {
   for (QGraphicsItem *item : items) {
     SmoothNode *figure = dynamic_cast<SmoothNode *>(item);
     if (figure) {
-      figure->setBrush(colors.nodeDefault);
-      figure->setPen(QPen(colors.border, 1));
-      figure->setHoverColor(colors.nodeHover);
+      figure->updateThemeStyle(colors);
     }
 
     SmoothEdge *edge = dynamic_cast<SmoothEdge *>(item);
     if (edge) {
-      edge->setPen(QPen(colors.edgeDefault, 2));
+      edge->updateThemeStyle(colors);
     }
   }
 }
 
+/**
+ * @brief Обновляет стиль всего окна и всех компонентов.
+ */
 void MainWindow::updateStyle() {
   // Применяем глобальный стиль к приложению
   qApp->setStyleSheet(generateGlobalStyleSheet());
@@ -349,14 +449,164 @@ void MainWindow::updateStyle() {
   }
 }
 
-void MainWindow::resizeEvent(QResizeEvent *event) {
-  QWidget::resizeEvent(event);
-  if (graphView_) {
-    graphView_->setGeometry(0, 0, width(), height());
+/**
+ * @brief Отображает уведомление пользователю.
+ * @param message Текст уведомления.
+ * @param isError Флаг ошибки (true) или информации (false).
+ */
+void MainWindow::showNotification(const QString &message, bool isError) {
+  QMessageBox msgBox;
+  msgBox.setWindowTitle(isError ? "Ошибка" : "Информация");
+  msgBox.setText(message);
+  msgBox.setIcon(isError ? QMessageBox::Critical : QMessageBox::Information);
+  msgBox.exec();
+}
+
+/**
+ * @brief Сохраняет граф в файл.
+ * @param filepath Путь к файлу для сохранения.
+ * @return true если сохранение успешно, false в противном случае.
+ */
+bool MainWindow::saveGraphToFile(const QString &filepath) {
+  std::string stdPath = filepath.toStdString();
+
+  // Собираем данные из сцены
+  QGraphicsScene *scene = graphView_->scene();
+  if (!scene)
+    return false;
+
+  // Очищаем граф (но сохраняем ID существующих узлов)
+  graph_->clear();
+
+  // Собираем узлы и назначаем ID
+  QList<QGraphicsItem *> items = scene->items();
+  std::unordered_map<SmoothNode *, size_t> nodeToId;
+  size_t nextId = 1;
+
+  for (QGraphicsItem *item : items) {
+    SmoothNode *node = dynamic_cast<SmoothNode *>(item);
+    if (node) {
+      // Используем существующий ID или создаём новый
+      size_t id = node->getId();
+      if (id == 0) {
+        id = nextId++;
+      } else {
+        if (id >= nextId)
+          nextId = id + 1;
+      }
+      nodeToId[node] = id;
+      node->setId(id);
+      graph_->addNode(node);
+    }
   }
-  if (menuBar_) {
-    menuBar_->setGeometry(10, 10, width() - 20, menuBar_->height());
+
+  // Собираем рёбра
+  for (QGraphicsItem *item : items) {
+    SmoothEdge *edge = dynamic_cast<SmoothEdge *>(item);
+    if (edge && nodeToId.count(edge->getStartNode()) &&
+        nodeToId.count(edge->getEndNode())) {
+      edge->setWeight(edge->getWeight()); // Сохраняем вес
+      graph_->addEdge(edge);
+    }
+  }
+
+  bool success = graph_->saveToFile(stdPath);
+  if (success) {
+    showNotification(
+        QString("Граф успешно сохранён в файл:\n%1").arg(filepath));
+  } else {
+    showNotification("Ошибка при сохранении графа!", true);
+  }
+
+  return success;
+}
+
+/**
+ * @brief Загружает граф из файла.
+ * @param filepath Путь к файлу для загрузки.
+ * @return true если загрузка успешна, false в противном случае.
+ */
+bool MainWindow::loadGraphFromFile(const QString &filepath) {
+  std::string stdPath = filepath.toStdString();
+
+  if (graphView_) {
+    graphView_->clearScene();
+  }
+
+  // Загружаем граф из файла
+  QGraphicsScene *scene = graphView_->scene();
+  bool success = graph_->loadFromFile(stdPath, scene);
+
+  if (success) {
+    showNotification(
+        QString("Граф успешно загружен из файла:\n%1").arg(filepath));
+  } else {
+    showNotification("Ошибка при загрузке графа!", true);
+  }
+
+  return success;
+}
+
+/**
+ * @brief Слот для сохранения графа.
+ *
+ * Реализует умное сохранение:
+ * - Если граф загружен из файла и не модифицирован - сохраняет в тот же файл
+ * - Если граф новый или нужно сохранить как - вызывает диалог выбора файла
+ * - После сохранения выводит уведомление с путём к файлу
+ */
+void MainWindow::onSaveGraph() {
+  QString filepath;
+
+  // Если граф уже был сохранён или загружен из файла
+  if (!graph_->getCurrentFilePath().empty()) {
+    // Сохраняем в тот же файл
+    saveGraphToFile(QString::fromStdString(graph_->getCurrentFilePath()));
+    return;
+  }
+
+  // Иначе запрашиваем новое имя файла
+  filepath = QFileDialog::getSaveFileName(this, "Сохранить граф", QString(),
+                                          "Graph Files (*.gphz)");
+
+  if (!filepath.isEmpty()) {
+    // Добавляем расширение если его нет
+    if (!filepath.endsWith(".gphz", Qt::CaseInsensitive)) {
+      filepath += ".gphz";
+    }
+    saveGraphToFile(filepath);
   }
 }
 
-MainWindow::~MainWindow() {}
+/**
+ * @brief Слот для открытия графа из файла.
+ *
+ * - Проверяет наличие несохранённых изменений
+ * - Открывает диалог выбора файла (.gphz)
+ * - Загружает и отображает граф
+ */
+void MainWindow::onOpenGraph() {
+  // Проверяем, не потеряются ли несохранённые изменения
+  if (graph_->isModified() && !graph_->getCurrentFilePath().empty()) {
+    QMessageBox::StandardButton reply = QMessageBox::question(
+        this, "Несохранённые изменения",
+        "У вас есть несохранённые изменения. Открыть другой файл?",
+        QMessageBox::Yes | QMessageBox::No);
+
+    if (reply == QMessageBox::No) {
+      return;
+    }
+  }
+
+  QString filepath = QFileDialog::getOpenFileName(
+      this, "Открыть граф", QString(), "Graph Files (*.gphz)");
+
+  if (!filepath.isEmpty()) {
+    loadGraphFromFile(filepath);
+  }
+}
+
+/**
+ * @brief Деструктор главного окна.
+ */
+MainWindow::~MainWindow() { delete graph_; }

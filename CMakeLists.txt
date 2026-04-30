@@ -15,8 +15,8 @@ set(SOURCES
     src/front/Figures.cpp
     src/front/MenuBar.cpp
     src/front/ThemeManager.cpp
-    src/back/Logger.cpp
-)
+    src/back/Graph.cpp
+    src/back/Graphviz.cpp)
 
 set(HEADERS
     src/front/MainWindow.hpp
@@ -25,7 +25,7 @@ set(HEADERS
     src/front/MenuBar.hpp
     src/front/ThemeManager.hpp
     src/back/Graph.hpp
-    src/back/Logger.hpp)
+    src/back/Graphviz.hpp)
 
   add_executable(SmoothGraphs ${SOURCES} ${HEADERS})
 

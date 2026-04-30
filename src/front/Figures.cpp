@@ -1,6 +1,7 @@
 #include "Figures.hpp"
 #include "GraphView.hpp"
 #include "ThemeManager.hpp"
+#include "qlist.h"
 
 #include <QApplication>
 #include <QDebug>
@@ -187,8 +188,8 @@ SmoothNode::SmoothNode(qreal x, qreal y, qreal width, qreal height,
   setRect(x, y, width, height);
   setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
   /*defaultColor_ = Qt::red;
-  hoverColor_ = Qt::yellow;
-  setBrush(defaultColor_);*/
+  hoverColor_ = Qt::yellow; */
+  setBrush(defaultColor_);
 }
 
 /**
@@ -364,3 +365,7 @@ void SmoothNode::updateThemeStyle(const ThemeColors &colors) {
   setPen(QPen(borderColor_, 1));
   update(); // Перерисовать
 }
+
+QList<SmoothEdge *> SmoothNode::getIncomingEdges() { return incomingEdges_; }
+
+QList<SmoothEdge *> SmoothNode::getOutcomingEdges() { return incomingEdges_; }
