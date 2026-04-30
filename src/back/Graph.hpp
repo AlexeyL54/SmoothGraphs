@@ -143,6 +143,11 @@ private:
   bool isModified_;             // Флаг модификации
   ID nextNodeId_;               // Следующий доступный ID
 
+  struct Rout {
+    float bellmanValue;
+    SmoothNode *nextBestNode;
+  };
+
   /**
    * @brief Создаёт узлы на сцене из загруженных данных.
    * @param nodesData Данные об узлах (ID, x, y).
