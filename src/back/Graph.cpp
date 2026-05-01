@@ -6,6 +6,9 @@
 #include <QMessageBox>
 #include <algorithm>
 #include <cstddef>
+#include <limits>
+#include <set>
+#include <stack>
 
 /**
  * @brief Конструктор класса Graph.
@@ -335,13 +338,157 @@ bool Graph::loadFromFile(const std::string &filepath, QGraphicsScene *scene) {
   return true;
 }
 
+#include <limits>
+#include <set>
+#include <stack>
+
+// Вспомогательная функция для топологической сортировки (DFS)
+static void topologicalSortUtil(SmoothNode *node,
+                                std::unordered_map<SmoothNode *, bool> &visited,
+                                std::vector<SmoothNode *> &stack) {
+  visited[node] = true;
+
+  // Рекурсивно посещаем всех соседей (исходящие ребра)
+  for (SmoothEdge *edge : node->getOutcomingEdges()) {
+    SmoothNode *neighbor = edge->getEndNode();
+    if (!visited[neighbor]) {
+      topologicalSortUtil(neighbor, visited, stack);
+    }
+  }
+
+  // Добавляем текущий узел в стек после обработки всех соседей
+  stack.push_back(node);
+}
+
+// Получение топологически отсортированного списка узлов
+static std::vector<SmoothNode *>
+getTopologicalOrder(const std::vector<SmoothNode *> &allNodes) {
+  std::unordered_map<SmoothNode *, bool> visited;
+  std::vector<SmoothNode *> stack;
+
+  for (SmoothNode *node : allNodes) {
+    visited[node] = false;
+  }
+
+  for (SmoothNode *node : allNodes) {
+    if (!visited[node]) {
+      topologicalSortUtil(node, visited, stack);
+    }
+  }
+
+  // stack содержит узлы в обратном топологическом порядке (последний
+  // обработанный - первый в списке) Для прямого прохождения (от источника к
+  // стоку) нам нужен обычный топологический порядок. Но для обратного прохода
+  // (от стока к источнику) удобнее использовать обратный порядок. Вернем как
+  // есть, будем обрабатывать с конца.
+  return stack;
+}
+
+std::vector<SmoothNode *> Graph::findShortestPath(SmoothNode *from,
+                                                  SmoothNode *to) {
+  if (!from || !to) {
+    return {};
+  }
+
+  if (from == to) {
+    return {from};
+  }
+
+  // 1. Получаем все узлы графа
+  std::vector<SmoothNode *> allNodes = getNodes();
+
+  // 2. Топологическая сортировка
+  // Важно: этот алгоритм работает ТОЛЬКО для DAG. Если есть циклы, поведение не
+  // определено.
+  std::vector<SmoothNode *> topoOrder = getTopologicalOrder(allNodes);
+
+  // topoOrder сейчас содержит узлы в порядке финиша DFS.
+  // Чтобы получить классический топологический порядок (источники первыми),
+  // нужно развернуть. Но мы будем делать ОБРАТНЫЙ проход (от to к from),
+  // поэтому нам удобно обрабатывать узлы в порядке, обратном топологическому
+  // (стоки первыми). Так как getTopologicalOrder возвращает узлы в порядке
+  // "пост-порядка" (потомки перед родителями в стеке), то итерация с начала
+  // вектора даст нам узлы, близкие к стокам, первыми. Это то, что нам нужно для
+  // обратного прохода.
+
+  // 3. Инициализация структур данных для обратного прохода
+  // dist[node] - кратчайшее расстояние от node до to
+  std::unordered_map<SmoothNode *, float> dist;
+  // nextNode[node] - следующий узел на кратчайшем пути от node к to
+  std::unordered_map<SmoothNode *, SmoothNode *> nextNode;
+
+  const float INF = std::numeric_limits<float>::max();
+
+  for (SmoothNode *node : allNodes) {
+    dist[node] = INF;
+    nextNode[node] = nullptr;
+  }
+
+  dist[to] = 0.0f; // Расстояние от to до to равно 0
+
+  // 4. Обратный проход ДП
+  // Обрабатываем узлы в топологическом порядке (так, чтобы при обработке узла
+  // u, все его потомки (куда ведут исходящие ребра) уже были обработаны). В
+  // нашем topoOrder (результат DFS post-order) узлы идут в порядке: потомки,
+  // затем предки. Поэтому простая итерация по topoOrder подходит для обратного
+  // прохода (от стоков к источникам).
+
+  for (SmoothNode *u : topoOrder) {
+    // Если до текущего узла u еще не удалось добраться от to (dist[u] == INF),
+    // то он не лежит на пути к to, пропускаем.
+    // Исключение: сам to, который мы инициализировали.
+    if (dist[u] == INF) {
+      continue;
+    }
+
+    // Рассматриваем все входящие ребра в u: (v -> u)
+    // Мы хотим обновить dist[v] используя dist[u]
+    for (SmoothEdge *inEdge : u->getIncomingEdges()) {
+      SmoothNode *v = inEdge->getStartNode();
+      float weight = inEdge->getWeight();
+
+      // Если путь от v до to через u короче, чем известный путь от v до to
+      if (dist[v] > weight + dist[u]) {
+        dist[v] = weight + dist[u];
+        nextNode[v] = u; // Запоминаем, что из v лучше идти в u
+      }
+    }
+  }
+
+  // 5. Проверка достижимости
+  if (dist[from] == INF) {
+    // Пути нет
+    return {};
+  }
+
+  // 6. Прямой проход: восстановление пути от from к to
+  std::vector<SmoothNode *> path;
+  SmoothNode *current = from;
+
+  while (current != nullptr) {
+    path.push_back(current);
+    if (current == to) {
+      break;
+    }
+    current = nextNode[current];
+  }
+
+  // Если путь не завершился в to (например, цикл или ошибка), возвращаем пустой
+  // вектор
+  if (path.back() != to) {
+    return {};
+  }
+
+  return path;
+}
+
 /**
  * @brief Находит кратчайший путь между двумя узлами.
  * @param from Начальный узел.
  * @param to Конечный узел.
  * @return Вектор узлов, составляющих кратчайший путь.
  */
-std::vector<SmoothNode *> Graph::findShortestPath(SmoothNode *from,
+/*std::vector<SmoothNode *> Graph::findShortestPath(SmoothNode *from,
                                                   SmoothNode *to) {
   std::vector<std::unordered_map<SmoothNode *, Rout>> vRev;
   std::vector<SmoothNode *> shortestPath = {from};
@@ -388,4 +535,4 @@ std::vector<SmoothNode *> Graph::findShortestPath(SmoothNode *from,
   }
 
   return shortestPath;
-}
+}*/

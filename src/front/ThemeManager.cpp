@@ -46,6 +46,12 @@ ThemeColors ThemeManager::loadTheme(Theme theme) const {
     colors.success = QColor(39, 174, 96);  // #27ae60
     colors.error = QColor(231, 76, 60);    // #e74c3c
     colors.warning = QColor(241, 196, 15); // #f1c40f
+
+    // Цвета для пути
+    colors.startNode = QColor(39, 174, 96); // Зелёный
+    colors.endNode = QColor(0, 122, 204);   // Синий
+    colors.pathNode = QColor(241, 196, 15); // Жёлтый
+    colors.pathEdge = QColor(0, 122, 204);  // Синий (акцентный)
   } else {
     // Светлая тема
     colors.background = QColor(243, 243, 243);  // #f3f3f3
@@ -72,6 +78,12 @@ ThemeColors ThemeManager::loadTheme(Theme theme) const {
     colors.success = QColor(46, 204, 113); // #2ecc71
     colors.error = QColor(231, 76, 60);    // #e74c3c
     colors.warning = QColor(241, 196, 15); // #f1c40f
+
+    // Цвета для пути
+    colors.startNode = QColor(46, 204, 113); // Зелёный
+    colors.endNode = QColor(0, 102, 179);    // Синий
+    colors.pathNode = QColor(241, 196, 15);  // Жёлтый
+    colors.pathEdge = QColor(0, 102, 179);   // Синий
   }
 
   return colors;

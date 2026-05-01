@@ -34,6 +34,12 @@ struct ThemeColors {
   QColor success;     // Успешное действие
   QColor error;       // Ошибка
   QColor warning;     // Предупреждение
+
+  // Цвета для визуализации пути
+  QColor startNode; // Цвет стартового узла
+  QColor endNode;   // Цвет конечного узла
+  QColor pathNode;  // Цвет узла на пути
+  QColor pathEdge;  // Цвет ребра на пути
 };
 
 class ThemeManager : public QObject {
@@ -42,7 +48,6 @@ public:
   explicit ThemeManager(QObject *parent = nullptr);
 
   void setTheme(Theme theme);
-  // void setTheme(ThemeColors customColors);
   Theme getTheme();
   ThemeColors getThemeColors();
 

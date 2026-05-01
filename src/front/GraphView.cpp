@@ -3,25 +3,14 @@
 #include "Figures.hpp"
 
 #include <QMenu>
+#include <QMessageBox>
 
-/**
- * @brief Конструктор класса GraphView.
- * @param scene Указатель на сцену QGraphicsScene.
- * @param parent Родительский виджет (по умолчанию nullptr).
- */
 GraphView::GraphView(QGraphicsScene *scene, QWidget *parent)
     : QGraphicsView(scene, parent), scene_(scene) {
   setMouseTracking(true);
+  setupNodeSelectionBridge();
 }
 
-/**
- * @brief Обработчик события контекстного меню.
- * @param event Указатель на событие контекстного меню.
- *
- * Если клик произошёл на пустом месте сцены, отображает меню с опциями:
- * - "Добавить узел" — создаёт новую фигуру
- * - "Очистить все" — удаляет все элементы со сцены
- */
 void GraphView::contextMenuEvent(QContextMenuEvent *event) {
   if (itemAt(event->pos()) == nullptr) {
     QMenu menu;
@@ -37,16 +26,9 @@ void GraphView::contextMenuEvent(QContextMenuEvent *event) {
   }
 }
 
-/**
- * @brief Начинает процесс создания ребра от указанного узла.
- * @param startNode Указатель на начальный узел (фигуру).
- *
- * Метод активирует режим создания ребра: устанавливает курсор,
- * создаёт временное пунктирное ребро и отслеживает перемещение мыши.
- */
 void GraphView::startEdgeCreation(SmoothNode *startNode) {
   isCreatingEdge_ = true;
-  startNode_ = startNode;
+  tempStartNode_ = startNode;
   startPos_ = startNode->scenePos() + QPointF(50, 50);
   setCursor(Qt::CrossCursor);
 
@@ -56,10 +38,6 @@ void GraphView::startEdgeCreation(SmoothNode *startNode) {
   scene_->addItem(tempEdge_);
 }
 
-/**
- * @brief Обновляет стиль всех элементов на сцене.
- * @param colors Структура с цветами текущей темы.
- */
 void GraphView::updateAllElementsTheme(const ThemeColors &colors) {
   if (!scene_)
     return;
@@ -78,13 +56,6 @@ void GraphView::updateAllElementsTheme(const ThemeColors &colors) {
   }
 }
 
-/**
- * @brief Обработчик события перемещения мыши.
- * @param event Указатель на событие мыши.
- *
- * В режиме создания ребра обновляет положение временного ребра
- * от начального узла до текущей позиции курсора.
- */
 void GraphView::mouseMoveEvent(QMouseEvent *event) {
   if (isCreatingEdge_ && tempEdge_) {
     QPointF currentPos = mapToScene(event->pos());
@@ -94,14 +65,6 @@ void GraphView::mouseMoveEvent(QMouseEvent *event) {
   QGraphicsView::mouseMoveEvent(event);
 }
 
-/**
- * @brief Обработчик события нажатия кнопки мыши.
- * @param event Указатель на событие мыши.
- *
- * В режиме создания ребра:
- * - ЛКМ: завершает создание ребра, если курсор над целевым узлом
- * - ПКМ: отменяет создание ребра
- */
 void GraphView::mousePressEvent(QMouseEvent *event) {
   if (isCreatingEdge_) {
     if (event->button() == Qt::LeftButton) {
@@ -109,22 +72,19 @@ void GraphView::mousePressEvent(QMouseEvent *event) {
       QGraphicsItem *item = scene_->itemAt(scenePos, QTransform());
       SmoothNode *endNode = dynamic_cast<SmoothNode *>(item);
 
-      if (endNode && endNode != startNode_) {
+      if (endNode && endNode != tempStartNode_) {
         if (tempEdge_) {
           scene_->removeItem(tempEdge_);
           delete tempEdge_;
           tempEdge_ = nullptr;
         }
 
-        SmoothEdge *finalEdge = new SmoothEdge(startNode_, endNode);
+        SmoothEdge *finalEdge = new SmoothEdge(tempStartNode_, endNode);
         scene_->addItem(finalEdge);
-        emit edgeAdded(finalEdge); // Сигнал о добавлении ребра
+        emit edgeAdded(finalEdge);
 
-        // Добавляем ребро в оба узла
-        startNode_->addOutgoingEdge(finalEdge);
+        tempStartNode_->addOutgoingEdge(finalEdge);
         endNode->addIncomingEdge(finalEdge);
-
-        // Принудительно обновляем позицию
         finalEdge->updatePosition();
 
         qDebug() << "Edge created and added to both nodes";
@@ -137,7 +97,7 @@ void GraphView::mousePressEvent(QMouseEvent *event) {
       }
 
       isCreatingEdge_ = false;
-      startNode_ = nullptr;
+      tempStartNode_ = nullptr;
       setCursor(Qt::ArrowCursor);
       return;
     } else if (event->button() == Qt::RightButton) {
@@ -147,7 +107,7 @@ void GraphView::mousePressEvent(QMouseEvent *event) {
         tempEdge_ = nullptr;
       }
       isCreatingEdge_ = false;
-      startNode_ = nullptr;
+      tempStartNode_ = nullptr;
       setCursor(Qt::ArrowCursor);
       return;
     }
@@ -156,50 +116,35 @@ void GraphView::mousePressEvent(QMouseEvent *event) {
   QGraphicsView::mousePressEvent(event);
 }
 
-/**
- * @brief Слот для добавления новой фигуры на сцену.
- *
- * Создаёт экземпляр Figure, разрешает перемещение
- * и добавляет его в сцену. Испускает сигнал nodeAdded.
- */
 void GraphView::addFigure() {
   SmoothNode *fig = new SmoothNode(0, 0, 100, 100);
-  fig->setFlag(QGraphicsItem::ItemIsMovable);
-  fig->setAcceptHoverEvents(true);
 
   if (scene_) {
     scene_->addItem(fig);
-    emit nodeAdded(fig); // Сигнал о добавлении узла
+    emit nodeAdded(fig);
     qDebug() << "Figure added to scene, signal emitted";
   }
 }
 
-/**
- * @brief Слот для очистки сцены.
- *
- * Удаляет все элементы со сцены и сбрасывает внутренние состояния,
- * связанные с созданием рёбер. Испускает сигналы nodeRemoved и edgeRemoved.
- */
 void GraphView::clearScene() {
   if (!scene_)
     return;
 
   qDebug() << "Starting clear...";
 
-  // Отключаем сигналы и флаги, чтобы избежать лишних обновлений
+  clearPathHighlight();
+  pathStartNode_ = nullptr;
+  pathEndNode_ = nullptr;
   isCreatingEdge_ = false;
 
-  // Собираем все элементы
   QList<QGraphicsItem *> items = scene_->items();
 
-  // Сначала удаляем все рёбра вручную (отвязывая их перед удалением)
   for (QGraphicsItem *item : items) {
     SmoothEdge *edge = dynamic_cast<SmoothEdge *>(item);
     if (edge) {
       qDebug() << "Removing edge manually";
-      emit edgeRemoved(edge); // Сигнал об удалении ребра
+      emit edgeRemoved(edge);
 
-      // Отвязываем ребро от узлов перед удалением
       SmoothNode *start = edge->getStartNode();
       SmoothNode *end = edge->getEndNode();
       if (start) {
@@ -208,21 +153,18 @@ void GraphView::clearScene() {
       if (end) {
         end->removeIncomingEdge(edge);
       }
-      // Удаляем ребро
       scene_->removeItem(edge);
       delete edge;
     }
   }
 
-  // Теперь удаляем все фигуры
-  items = scene_->items(); // Обновляем список (рёбер уже нет)
+  items = scene_->items();
   for (QGraphicsItem *item : items) {
     SmoothNode *fig = dynamic_cast<SmoothNode *>(item);
     if (fig) {
       qDebug() << "Removing figure manually";
-      emit nodeRemoved(fig); // Сигнал об удалении узла
+      emit nodeRemoved(fig);
 
-      // Очищаем списки (хотя они уже должны быть пусты)
       fig->clearIncomingEdges();
       fig->clearOutcomingEdges();
       scene_->removeItem(fig);
@@ -230,15 +172,143 @@ void GraphView::clearScene() {
     }
   }
 
-  // Дополнительная очистка на всякий случай
   scene_->clear();
 
-  // Сбрасываем указатели
-  startNode_ = nullptr;
+  tempStartNode_ = nullptr;
   if (tempEdge_) {
     tempEdge_ = nullptr;
   }
 
   setCursor(Qt::ArrowCursor);
   qDebug() << "Clear finished";
+}
+
+void GraphView::setupNodeSelectionBridge() {
+  NodeSelectionBridge *bridge = NodeSelectionBridge::instance();
+
+  connect(bridge, &NodeSelectionBridge::setStartNodeRequested, this,
+          &GraphView::setStartNode);
+  connect(bridge, &NodeSelectionBridge::setEndNodeRequested, this,
+          &GraphView::setEndNode);
+  connect(bridge, &NodeSelectionBridge::clearStartNodeRequested, this,
+          &GraphView::clearStartNode);
+  connect(bridge, &NodeSelectionBridge::clearEndNodeRequested, this,
+          &GraphView::clearEndNode);
+}
+
+void GraphView::setStartNode(SmoothNode *node) {
+  if (!node)
+    return;
+
+  qDebug() << "setStartNode called for node:" << node->getId();
+
+  if (pathStartNode_) {
+    if (pathStartNode_ == node) {
+      pathStartNode_->setRole(NodeRole::Normal);
+      pathStartNode_ = nullptr;
+      emit startNodeChanged(nullptr);
+      return;
+    }
+    pathStartNode_->setRole(NodeRole::Normal);
+  }
+
+  if (pathEndNode_ == node) {
+    QMessageBox::warning(
+        nullptr, "Ошибка",
+        "Узел уже является конечным. Нельзя назначить его стартовым.");
+    return;
+  }
+
+  pathStartNode_ = node;
+  pathStartNode_->setRole(NodeRole::Start);
+  emit startNodeChanged(pathStartNode_);
+  clearPathHighlight();
+}
+
+void GraphView::setEndNode(SmoothNode *node) {
+  if (!node)
+    return;
+
+  qDebug() << "setEndNode called for node:" << node->getId();
+
+  if (pathEndNode_) {
+    if (pathEndNode_ == node) {
+      pathEndNode_->setRole(NodeRole::Normal);
+      pathEndNode_ = nullptr;
+      emit endNodeChanged(nullptr);
+      return;
+    }
+    pathEndNode_->setRole(NodeRole::Normal);
+  }
+
+  if (pathStartNode_ == node) {
+    QMessageBox::warning(
+        nullptr, "Ошибка",
+        "Узел уже является стартовым. Нельзя назначить его конечным.");
+    return;
+  }
+
+  pathEndNode_ = node;
+  pathEndNode_->setRole(NodeRole::End);
+  emit endNodeChanged(pathEndNode_);
+  clearPathHighlight();
+}
+
+void GraphView::clearStartNode(SmoothNode *node) {
+  qDebug() << "clearStartNode called for node:" << (node ? node->getId() : 0);
+  if (pathStartNode_ == node) {
+    pathStartNode_->setRole(NodeRole::Normal);
+    pathStartNode_ = nullptr;
+    emit startNodeChanged(nullptr);
+    clearPathHighlight();
+  }
+}
+
+void GraphView::clearEndNode(SmoothNode *node) {
+  qDebug() << "clearEndNode called for node:" << (node ? node->getId() : 0);
+  if (pathEndNode_ == node) {
+    pathEndNode_->setRole(NodeRole::Normal);
+    pathEndNode_ = nullptr;
+    emit endNodeChanged(nullptr);
+    clearPathHighlight();
+  }
+}
+
+void GraphView::highlightPath(const std::vector<SmoothNode *> &path) {
+  clearPathHighlight();
+
+  if (path.empty())
+    return;
+
+  currentPath_ = path;
+
+  for (size_t i = 0; i < path.size() - 1; ++i) {
+    if (path[i] && path[i + 1]) {
+      QList<SmoothEdge *> edges = path[i]->getOutcomingEdges();
+      for (SmoothEdge *edge : edges) {
+        if (edge->getEndNode() == path[i + 1]) {
+          edge->setHighlighted(true);
+          break;
+        }
+      }
+    }
+  }
+
+  qDebug() << "Path highlighted with" << path.size() << "nodes";
+}
+
+void GraphView::clearPathHighlight() {
+  if (!scene_)
+    return;
+
+  QList<QGraphicsItem *> items = scene_->items();
+  for (QGraphicsItem *item : items) {
+    SmoothEdge *edge = dynamic_cast<SmoothEdge *>(item);
+    if (edge) {
+      edge->setHighlighted(false);
+    }
+  }
+
+  currentPath_.clear();
+  qDebug() << "Path highlight cleared";
 }
