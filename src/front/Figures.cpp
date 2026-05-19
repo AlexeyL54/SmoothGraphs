@@ -50,8 +50,8 @@ void SmoothEdge::updatePosition() {
     return;
   }
 
-  QPointF startCenter = startNode_->pos();
-  QPointF endCenter = endNode_->pos();
+  QPointF startCenter = startNode_->getCenter();
+  QPointF endCenter = endNode_->getCenter();
 
   if (startNode_ == endNode_) {
     setLine(QLineF(startCenter.x() + 40, startCenter.y(), startCenter.x() + 80,
@@ -81,22 +81,46 @@ void SmoothEdge::setHighlighted(bool highlight) {
   update();
 }
 
-std::pair<QPointF, QPointF> SmoothEdge::computeArrowPos(QLineF &line) {
-  double angle = std::atan2(-line.dy(), line.dx());
-  QPointF endPt = line.p2();
-  qreal arrowSize = 20.0;
+// Figures.cpp - исправленный computeArrowPos
 
-  QPointF arrowP1 = endPt - QPointF(std::sin(angle + M_PI / 3) * arrowSize,
-                                    std::cos(angle + M_PI / 3) * arrowSize);
+std::pair<QPointF, QPointF> SmoothEdge::computeArrowPos(QLineF &line) {
+  if (!startNode_ || !endNode_) {
+    return std::make_pair(line.p2(), line.p2());
+  }
+
+  // Направление от start к end
+  double angle = std::atan2(line.dy(), line.dx());
+  double nodeRadius = endNode_->getRadius();
+  qreal arrowSize = 15.0;
+
+  // Вектор от start к end
+  QPointF direction = line.p2() - line.p1();
+  double length =
+      std::sqrt(direction.x() * direction.x() + direction.y() * direction.y());
+
+  if (length > nodeRadius) {
+    // Сдвигаем конечную точку внутрь узла на радиус
+    direction *= (length - nodeRadius) / length;
+  }
+
+  QPointF adjustedEnd = line.p1() + direction;
+
+  QPointF arrowP1 =
+      adjustedEnd - QPointF(std::sin(angle + M_PI / 3) * arrowSize,
+                            std::cos(angle + M_PI / 3) * arrowSize);
   QPointF arrowP2 =
-      endPt - QPointF(std::sin(angle + M_PI - M_PI / 3) * arrowSize,
-                      std::cos(angle + M_PI - M_PI / 3) * arrowSize);
+      adjustedEnd - QPointF(std::sin(angle + M_PI - M_PI / 3) * arrowSize,
+                            std::cos(angle + M_PI - M_PI / 3) * arrowSize);
+
+  // Обновляем линию с скорректированной конечной точкой
+  line.setP2(adjustedEnd);
 
   return std::make_pair(arrowP1, arrowP2);
 }
 
 void SmoothEdge::paintArrow(QPainter *painter, QLineF &line, QPointF p1,
                             QPointF p2) {
+  painter->save();
   painter->setPen(Qt::NoPen);
   painter->setBrush(pen().color());
 
@@ -107,6 +131,7 @@ void SmoothEdge::paintArrow(QPainter *painter, QLineF &line, QPointF p1,
   arrowPath.closeSubpath();
 
   painter->drawPath(arrowPath);
+  painter->restore();
 }
 
 void SmoothEdge::paint(QPainter *painter,
@@ -121,9 +146,14 @@ void SmoothEdge::paint(QPainter *painter,
     return;
 
   painter->setPen(pen());
+
+  // computeArrowPos модифицирует line, корректируя конечную точку
+  std::pair<QPointF, QPointF> arrowP = computeArrowPos(line);
+
+  // Рисуем линию (с уже скорректированной конечной точкой)
   painter->drawLine(line);
 
-  std::pair<QPointF, QPointF> arrowP = computeArrowPos(line);
+  // Рисуем стрелку
   paintArrow(painter, line, arrowP.first, arrowP.second);
 }
 
