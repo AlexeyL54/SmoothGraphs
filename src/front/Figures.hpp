@@ -1,5 +1,6 @@
 #pragma once
 
+#include "qpoint.h"
 #include <QColor>
 #include <QGraphicsEllipseItem>
 #include <QGraphicsLineItem>
@@ -84,9 +85,7 @@ public:
   void clearIncomingEdges();
   void clearOutcomingEdges();
 
-  QPointF getCenter() const {
-    return scenePos() + QPointF(getRadius(), getRadius());
-  }
+  QPointF getCenter() const { return scenePos(); }
 
   void setHoverColor(const QColor &color);
   void updateThemeStyle(const class ThemeColors &colors);

@@ -2,6 +2,9 @@
 #include "GraphView.hpp"
 #include "ThemeManager.hpp"
 #include "qlist.h"
+#include "qlogging.h"
+#include "qpoint.h"
+#include "qtypes.h"
 
 #include <QApplication>
 #include <QDebug>
@@ -97,6 +100,7 @@ std::pair<QPointF, QPointF> SmoothEdge::computeArrowPos(QLineF &line) {
   QPointF direction = line.p2() - line.p1();
   double length =
       std::sqrt(direction.x() * direction.x() + direction.y() * direction.y());
+  QPointF direction1 = direction / length;
 
   if (length > nodeRadius) {
     // Сдвигаем конечную точку внутрь узла на радиус
@@ -104,6 +108,8 @@ std::pair<QPointF, QPointF> SmoothEdge::computeArrowPos(QLineF &line) {
   }
 
   QPointF adjustedEnd = line.p1() + direction;
+  QPointF adjustStart = {startNode_->getCenter() +
+                         startNode_->getRadius() * direction1};
 
   QPointF arrowP1 =
       adjustedEnd - QPointF(std::sin(angle + M_PI / 3) * arrowSize,
@@ -112,8 +118,8 @@ std::pair<QPointF, QPointF> SmoothEdge::computeArrowPos(QLineF &line) {
       adjustedEnd - QPointF(std::sin(angle + M_PI - M_PI / 3) * arrowSize,
                             std::cos(angle + M_PI - M_PI / 3) * arrowSize);
 
-  // Обновляем линию с скорректированной конечной точкой
   line.setP2(adjustedEnd);
+  line.setP1(adjustStart);
 
   return std::make_pair(arrowP1, arrowP2);
 }
