@@ -39,10 +39,10 @@ void Graphviz::saveNodes(std::ofstream &out,
     if (!node)
       continue;
 
-    QPointF pos = node->scenePos();
+    QPointF center = node->getCenter();
     out << "  n" << node->getId() << " [";
     out << "label=\"" << node->getId() << "\" ";
-    out << "pos=\"" << pos.x() << "," << pos.y() << "!\" ";
+    out << "pos=\"" << center.x() << "," << center.y() << "!\" ";
     out << "];\n";
   }
 }

@@ -75,8 +75,7 @@ enum class NodeRole { Normal, Start, End };
 
 class SmoothNode : public QGraphicsEllipseItem {
 public:
-  SmoothNode(qreal x, qreal y, qreal width, qreal height,
-             QGraphicsItem *parent = nullptr);
+  SmoothNode(qreal x, qreal y, qreal radius, QGraphicsItem *parent = nullptr);
 
   void addIncomingEdge(SmoothEdge *edge);
   void addOutgoingEdge(SmoothEdge *edge);
@@ -85,7 +84,9 @@ public:
   void clearIncomingEdges();
   void clearOutcomingEdges();
 
-  QPointF getCenter() const { return scenePos() + QPointF(50, 50); }
+  QPointF getCenter() const {
+    return scenePos() + QPointF(getRadius(), getRadius());
+  }
 
   void setHoverColor(const QColor &color);
   void updateThemeStyle(const class ThemeColors &colors);
@@ -101,6 +102,7 @@ public:
   void setRole(NodeRole role);
   NodeRole getRole() const { return role_; }
   void resetPathHighlight();
+  qreal getRadius() const { return rect().width() / 2; }
 
 protected:
   void contextMenuEvent(QGraphicsSceneContextMenuEvent *event) override;

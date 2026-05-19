@@ -120,7 +120,7 @@ void GraphView::mousePressEvent(QMouseEvent *event) {
 }
 
 void GraphView::addFigure() {
-  SmoothNode *fig = new SmoothNode(0, 0, 100, 100);
+  SmoothNode *fig = new SmoothNode(0, 0, 50);
 
   if (themeMng_) {
     fig->updateThemeStyle(themeMng_->getThemeColors());

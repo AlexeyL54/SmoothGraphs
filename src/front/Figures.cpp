@@ -50,8 +50,8 @@ void SmoothEdge::updatePosition() {
     return;
   }
 
-  QPointF startCenter = startNode_->getCenter();
-  QPointF endCenter = endNode_->getCenter();
+  QPointF startCenter = startNode_->pos();
+  QPointF endCenter = endNode_->pos();
 
   if (startNode_ == endNode_) {
     setLine(QLineF(startCenter.x() + 40, startCenter.y(), startCenter.x() + 80,
@@ -143,10 +143,11 @@ void SmoothEdge::contextMenuEvent(QGraphicsSceneContextMenuEvent *event) {
 
 // ==================== SmoothNode Implementation ====================
 
-SmoothNode::SmoothNode(qreal x, qreal y, qreal width, qreal height,
+SmoothNode::SmoothNode(qreal centerX, qreal centerY, qreal radius,
                        QGraphicsItem *parent)
-    : QGraphicsEllipseItem(x, y, width, height, parent), id_(0) {
-  setRect(x, y, width, height);
+    : QGraphicsEllipseItem(centerX - radius, centerY - radius, radius * 2,
+                           radius * 2, parent),
+      id_(0) {
   setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
   setAcceptHoverEvents(true);
   setFlag(QGraphicsItem::ItemIsMovable);

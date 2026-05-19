@@ -1,4 +1,3 @@
-// Graph.cpp
 #include "Graph.hpp"
 #include "Graphviz.hpp"
 
@@ -215,11 +214,11 @@ std::unordered_map<ID, SmoothNode *> Graph::createNodesFromData(
 
   for (const auto &nodeData : nodesData) {
     ID id = std::get<0>(nodeData);
-    double x = std::get<1>(nodeData);
-    double y = std::get<2>(nodeData);
+    double centerX = std::get<1>(nodeData);
+    double centerY = std::get<2>(nodeData);
 
-    SmoothNode *node = new SmoothNode(x, y, 100, 100);
-    node->setPos(x, y);
+    // Теперь конструктор принимает центр и радиус
+    SmoothNode *node = new SmoothNode(centerX, centerY, 50);
     node->setId(id);
     node->setFlag(QGraphicsItem::ItemIsMovable);
     node->setAcceptHoverEvents(true);
@@ -235,8 +234,8 @@ std::unordered_map<ID, SmoothNode *> Graph::createNodesFromData(
       nextNodeId_ = id + 1;
     }
 
-    qDebug() << "Created node with ID:" << id << "at position (" << x << ","
-             << y << ")";
+    qDebug() << "Created node with ID:" << id << "at center (" << centerX << ","
+             << centerY << ")";
   }
 
   return idToNode;
@@ -267,6 +266,8 @@ void Graph::createEdgesFromData(
       if (scene) {
         scene->addItem(edge);
       }
+
+      edge->updatePosition();
 
       fromIt->second->addOutgoingEdge(edge);
       toIt->second->addIncomingEdge(edge);
@@ -334,10 +335,6 @@ bool Graph::loadFromFile(const std::string &filepath, QGraphicsScene *scene) {
   qDebug() << "Graph loaded from:" << filepath.c_str();
   return true;
 }
-
-#include <limits>
-#include <set>
-#include <stack>
 
 // Вспомогательная функция для топологической сортировки (DFS)
 static void topologicalSortUtil(SmoothNode *node,
@@ -478,58 +475,3 @@ std::vector<SmoothNode *> Graph::findShortestPath(SmoothNode *from,
 
   return path;
 }
-
-/**
- * @brief Находит кратчайший путь между двумя узлами.
- * @param from Начальный узел.
- * @param to Конечный узел.
- * @return Вектор узлов, составляющих кратчайший путь.
- */
-/*std::vector<SmoothNode *> Graph::findShortestPath(SmoothNode *from,
-                                                  SmoothNode *to) {
-  std::vector<std::unordered_map<SmoothNode *, Rout>> vRev;
-  std::vector<SmoothNode *> shortestPath = {from};
-  vRev.push_back({{to, {0, nullptr}}});
-  size_t k = 0;
-
-  // пока не дошли до отправного узла
-  while (vRev[k].find(from) == vRev[k].end()) {
-    // создать новый пояс
-    vRev.push_back({});
-
-    // для каждого узла k-го пояса
-    // определить соседние узлы, из которых есть путь в текущий
-    for (std::pair<SmoothNode *const, Rout> node : vRev[k]) {
-      QList<SmoothEdge *> tempIncomingEdges = node.first->getIncomingEdges();
-
-      // для каждой входящей грани определить начало
-      for (SmoothEdge *inEdge : tempIncomingEdges) {
-        SmoothNode *tempNode = inEdge->getStartNode();
-        QList<SmoothEdge *> tempOutcomingEdges = tempNode->getIncomingEdges();
-        float minBellmanVal = 0;
-
-        // для каждого соседнего узла расчитать значение функции Беллмана
-        // и определить оптимальный следующий узел
-        for (SmoothEdge *outEdge : tempOutcomingEdges) {
-
-          if (minBellmanVal > vRev[k][outEdge->getEndNode()].bellmanValue) {
-            minBellmanVal = vRev[k][outEdge->getEndNode()].bellmanValue;
-
-            vRev[k + 1][tempNode].bellmanValue =
-                outEdge->getWeight() + minBellmanVal;
-            vRev[k + 1][tempNode].nextBestNode = outEdge->getEndNode();
-          }
-        }
-      }
-    }
-    k++;
-  }
-
-  SmoothNode *tempNode = from;
-  for (size_t i = vRev.size() - 2; i >= 0; i--) {
-    shortestPath.push_back(vRev[i - 1][tempNode].nextBestNode);
-    tempNode = vRev[i - 1][tempNode].nextBestNode;
-  }
-
-  return shortestPath;
-}*/
