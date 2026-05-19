@@ -402,37 +402,6 @@ bool MainWindow::saveGraphToFile(const QString &filepath) {
   if (!scene)
     return false;
 
-  graph_->clear();
-
-  QList<QGraphicsItem *> items = scene->items();
-  std::unordered_map<SmoothNode *, size_t> nodeToId;
-  size_t nextId = 1;
-
-  for (QGraphicsItem *item : items) {
-    SmoothNode *node = dynamic_cast<SmoothNode *>(item);
-    if (node) {
-      size_t id = node->getId();
-      if (id == 0) {
-        id = nextId++;
-      } else {
-        if (id >= nextId)
-          nextId = id + 1;
-      }
-      nodeToId[node] = id;
-      node->setId(id);
-      graph_->addNode(node);
-    }
-  }
-
-  for (QGraphicsItem *item : items) {
-    SmoothEdge *edge = dynamic_cast<SmoothEdge *>(item);
-    if (edge && nodeToId.count(edge->getStartNode()) &&
-        nodeToId.count(edge->getEndNode())) {
-      edge->setWeight(edge->getWeight());
-      graph_->addEdge(edge);
-    }
-  }
-
   bool success = graph_->saveToFile(stdPath);
   if (success) {
     showNotification(

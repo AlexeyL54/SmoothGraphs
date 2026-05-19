@@ -52,6 +52,7 @@ void Graphviz::saveNodes(std::ofstream &out,
  * @param out Выходной поток.
  * @param edges Вектор рёбер.
  */
+// Graphviz.cpp
 void Graphviz::saveEdges(std::ofstream &out,
                          const std::vector<SmoothEdge *> &edges) {
   out << "\n  // Edges\n";
@@ -64,6 +65,10 @@ void Graphviz::saveEdges(std::ofstream &out,
 
     if (!start || !end)
       continue;
+
+    // Добавим отладочный вывод
+    qDebug() << "Saving edge: start ID=" << start->getId()
+             << "end ID=" << end->getId() << "weight=" << edge->getWeight();
 
     out << "  n" << start->getId() << " -> n" << end->getId();
     if (edge->getWeight() != 1.0f) {
