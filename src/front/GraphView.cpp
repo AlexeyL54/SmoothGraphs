@@ -80,6 +80,9 @@ void GraphView::mousePressEvent(QMouseEvent *event) {
         }
 
         SmoothEdge *finalEdge = new SmoothEdge(tempStartNode_, endNode);
+        if (themeMng_) {
+          finalEdge->updateThemeStyle(themeMng_->getThemeColors());
+        }
         scene_->addItem(finalEdge);
         emit edgeAdded(finalEdge);
 
@@ -118,6 +121,10 @@ void GraphView::mousePressEvent(QMouseEvent *event) {
 
 void GraphView::addFigure() {
   SmoothNode *fig = new SmoothNode(0, 0, 100, 100);
+
+  if (themeMng_) {
+    fig->updateThemeStyle(themeMng_->getThemeColors());
+  }
 
   if (scene_) {
     scene_->addItem(fig);

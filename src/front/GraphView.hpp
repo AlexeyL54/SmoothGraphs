@@ -1,4 +1,3 @@
-// GraphView.hpp
 #pragma once
 
 #include <QContextMenuEvent>
@@ -9,6 +8,7 @@
 #include <QPointF>
 
 #include "Figures.hpp"
+#include "ThemeManager.hpp"
 
 /**
  * @class GraphView
@@ -30,6 +30,8 @@ public:
   SmoothNode *getEndNode() const { return pathEndNode_; }
   void highlightPath(const std::vector<SmoothNode *> &path);
   void clearPathHighlight();
+  void setThemeManager(ThemeManager *manager) { themeMng_ = manager; }
+  ThemeManager *getThemeManager() const { return themeMng_; }
 
 signals:
   void nodeAdded(SmoothNode *node);
@@ -55,6 +57,8 @@ private:
   SmoothNode *pathStartNode_ = nullptr;
   SmoothNode *pathEndNode_ = nullptr;
   std::vector<SmoothNode *> currentPath_;
+
+  ThemeManager *themeMng_ = nullptr;
 
 private slots:
   void addFigure();

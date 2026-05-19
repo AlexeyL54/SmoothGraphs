@@ -5,10 +5,7 @@
 #include <QDebug>
 #include <QMessageBox>
 #include <algorithm>
-#include <cstddef>
 #include <limits>
-#include <set>
-#include <stack>
 
 /**
  * @brief Конструктор класса Graph.

@@ -18,6 +18,7 @@ MainWindow::MainWindow(ThemeManager &themeMng, QWidget *parent)
   graphView_ = new GraphView(scene, this);
   graphView_->setRenderHint(QPainter::Antialiasing);
   graphView_->setDragMode(QGraphicsView::RubberBandDrag);
+  graphView_->setThemeManager(&themeMng);
 
   menuBar_ = new MenuBar(this);
 
