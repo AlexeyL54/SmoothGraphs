@@ -52,6 +52,8 @@ public:
   void updateThemeStyle(const class ThemeColors &colors);
   void setHighlighted(bool highlight);
   bool isHighlighted() const { return isHighlighted_; }
+  QRectF boundingRect() const override;
+  QPainterPath shape() const override;
 
 protected:
   void contextMenuEvent(QGraphicsSceneContextMenuEvent *event) override;
@@ -68,6 +70,9 @@ private:
 
   std::pair<QPointF, QPointF> computeArrowPos(QLineF &line);
   void paintArrow(QPainter *painter, QLineF &line, QPointF p1, QPointF p2);
+
+  mutable QPolygonF cachedArrowHead_;
+  mutable QLineF cachedLine_;
 };
 
 ///////////////////////////////////////////////////////////////////////////

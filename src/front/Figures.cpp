@@ -84,60 +84,112 @@ void SmoothEdge::setHighlighted(bool highlight) {
   update();
 }
 
-// Figures.cpp - исправленный computeArrowPos
+// Figures.cpp - добавьте/исправьте эти методы
+
+QRectF SmoothEdge::boundingRect() const {
+  QLineF line = this->line();
+  if (line.length() < 1e-5) {
+    return QGraphicsLineItem::boundingRect();
+  }
+
+  // Вычисляем стрелку для получения её bounding rect
+  QLineF tempLine = line;
+  std::pair<QPointF, QPointF> arrowP =
+      const_cast<SmoothEdge *>(this)->computeArrowPos(tempLine);
+
+  // Собираем все точки
+  QPolygonF polygon;
+  polygon << line.p1() << line.p2() << arrowP.first << arrowP.second;
+
+  // Добавляем небольшой отступ для антиалиасинга
+  QRectF rect = polygon.boundingRect();
+  rect.adjust(-3, -3, 3, 3);
+
+  return rect;
+}
+
+QPainterPath SmoothEdge::shape() const {
+  QPainterPath path;
+
+  QLineF line = this->line();
+  if (line.length() < 1e-5) {
+    path.addRect(boundingRect());
+    return path;
+  }
+
+  // Вычисляем стрелку
+  QLineF tempLine = line;
+  std::pair<QPointF, QPointF> arrowP =
+      const_cast<SmoothEdge *>(this)->computeArrowPos(tempLine);
+
+  // Добавляем линию с толщиной пера
+  QPen pen = this->pen();
+  QPainterPathStroker stroker;
+  stroker.setWidth(pen.widthF() + 4); // Добавляем запас для кликабельности
+  stroker.setCapStyle(Qt::RoundCap);
+  stroker.setJoinStyle(Qt::RoundJoin);
+
+  QPainterPath linePath;
+  linePath.moveTo(line.p1());
+  linePath.lineTo(line.p2());
+  path = stroker.createStroke(linePath);
+
+  // Добавляем стрелку
+  QPolygonF arrowHead;
+  arrowHead << line.p2() << arrowP.first << arrowP.second;
+  path.addPolygon(arrowHead);
+
+  return path;
+}
 
 std::pair<QPointF, QPointF> SmoothEdge::computeArrowPos(QLineF &line) {
   if (!startNode_ || !endNode_) {
     return std::make_pair(line.p2(), line.p2());
   }
 
-  // Направление от start к end
-  double angle = std::atan2(line.dy(), line.dx());
-  double nodeRadius = endNode_->getRadius();
-  qreal arrowSize = 15.0;
+  // Получаем центры узлов
+  QPointF startCenter = startNode_->getCenter();
+  QPointF endCenter = endNode_->getCenter();
 
-  // Вектор от start к end
-  QPointF direction = line.p2() - line.p1();
+  // Направление от start к end
+  QPointF direction = endCenter - startCenter;
   double length =
       std::sqrt(direction.x() * direction.x() + direction.y() * direction.y());
-  QPointF direction1 = direction / length;
 
-  if (length > nodeRadius) {
-    // Сдвигаем конечную точку внутрь узла на радиус
-    direction *= (length - nodeRadius) / length;
+  if (length < 1e-5) {
+    return std::make_pair(endCenter, endCenter);
   }
 
-  QPointF adjustedEnd = line.p1() + direction;
-  QPointF adjustStart = {startNode_->getCenter() +
-                         startNode_->getRadius() * direction1};
+  // Нормализованное направление
+  QPointF directionNormalized = direction / length;
 
-  QPointF arrowP1 =
-      adjustedEnd - QPointF(std::sin(angle + M_PI / 3) * arrowSize,
-                            std::cos(angle + M_PI / 3) * arrowSize);
-  QPointF arrowP2 =
-      adjustedEnd - QPointF(std::sin(angle + M_PI - M_PI / 3) * arrowSize,
-                            std::cos(angle + M_PI - M_PI / 3) * arrowSize);
+  // Радиусы узлов
+  double startRadius = startNode_->getRadius();
+  double endRadius = endNode_->getRadius();
 
-  line.setP2(adjustedEnd);
-  line.setP1(adjustStart);
+  // Точка на границе стартового узла
+  QPointF startPoint = startCenter + directionNormalized * startRadius;
+
+  // Точка на границе конечного узла
+  QPointF endPoint = endCenter - directionNormalized * endRadius;
+
+  // Угол для стрелки
+  double angle = std::atan2(direction.y(), direction.x());
+
+  // Размер стрелки (увеличим для наглядности)
+  qreal arrowSize = 14.0;
+
+  // Точки для стрелки (треугольник)
+  QPointF arrowP1 = endPoint - QPointF(std::cos(angle - M_PI / 3) * arrowSize,
+                                       std::sin(angle - M_PI / 3) * arrowSize);
+  QPointF arrowP2 = endPoint - QPointF(std::cos(angle + M_PI / 3) * arrowSize,
+                                       std::sin(angle + M_PI / 3) * arrowSize);
+
+  // Обновляем линию
+  line.setP1(startPoint);
+  line.setP2(endPoint);
 
   return std::make_pair(arrowP1, arrowP2);
-}
-
-void SmoothEdge::paintArrow(QPainter *painter, QLineF &line, QPointF p1,
-                            QPointF p2) {
-  painter->save();
-  painter->setPen(Qt::NoPen);
-  painter->setBrush(pen().color());
-
-  QPainterPath arrowPath;
-  arrowPath.moveTo(line.p2());
-  arrowPath.lineTo(p1);
-  arrowPath.lineTo(p2);
-  arrowPath.closeSubpath();
-
-  painter->drawPath(arrowPath);
-  painter->restore();
 }
 
 void SmoothEdge::paint(QPainter *painter,
@@ -151,16 +203,25 @@ void SmoothEdge::paint(QPainter *painter,
   if (line.length() < 1e-5)
     return;
 
-  painter->setPen(pen());
+  painter->save();
+  painter->setRenderHint(QPainter::Antialiasing, true);
 
-  // computeArrowPos модифицирует line, корректируя конечную точку
+  // Получаем точки для стрелки
   std::pair<QPointF, QPointF> arrowP = computeArrowPos(line);
 
-  // Рисуем линию (с уже скорректированной конечной точкой)
+  // Рисуем линию
+  painter->setPen(pen());
   painter->drawLine(line);
 
   // Рисуем стрелку
-  paintArrow(painter, line, arrowP.first, arrowP.second);
+  painter->setPen(Qt::NoPen);
+  painter->setBrush(pen().color());
+
+  QPolygonF arrowHead;
+  arrowHead << line.p2() << arrowP.first << arrowP.second;
+  painter->drawPolygon(arrowHead);
+
+  painter->restore();
 }
 
 void SmoothEdge::contextMenuEvent(QGraphicsSceneContextMenuEvent *event) {
