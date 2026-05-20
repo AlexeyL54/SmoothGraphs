@@ -49,12 +49,15 @@ void SmoothEdge::updatePosition() {
   }
 
   if (!startNode_->scene() || !endNode_->scene()) {
-    qDebug() << "Nodes doesn't exist in scene";
+    qDebug() << "Nodes don't exist in scene yet";
     return;
   }
 
   QPointF startCenter = startNode_->getCenter();
   QPointF endCenter = endNode_->getCenter();
+
+  qDebug() << "updatePosition edge from" << startNode_->getId() << "at"
+           << startCenter << "to" << endNode_->getId() << "at" << endCenter;
 
   if (startNode_ == endNode_) {
     setLine(QLineF(startCenter.x() + 40, startCenter.y(), startCenter.x() + 80,
@@ -183,6 +186,13 @@ void SmoothEdge::paint(QPainter *painter,
   painter->restore();
 }
 
+QPointF SmoothNode::getCenter() const {
+  QPointF center = pos() + QPointF(rect().width() / 2, rect().height() / 2);
+  qDebug() << "Node" << id_ << "getCenter returns:" << center.x() << ","
+           << center.y();
+  return center;
+}
+
 void SmoothEdge::contextMenuEvent(QGraphicsSceneContextMenuEvent *event) {
   QMenu menu;
   QAction *deleteAction = menu.addAction("Удалить ребро");
@@ -201,12 +211,17 @@ void SmoothEdge::contextMenuEvent(QGraphicsSceneContextMenuEvent *event) {
 
 SmoothNode::SmoothNode(qreal centerX, qreal centerY, qreal radius,
                        QGraphicsItem *parent)
-    : QGraphicsEllipseItem(centerX - radius, centerY - radius, radius * 2,
-                           radius * 2, parent),
+    : QGraphicsEllipseItem(0, 0, radius * 2, radius * 2,
+                           parent), // rect от (0,0)
       id_(0) {
   setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
   setAcceptHoverEvents(true);
   setFlag(QGraphicsItem::ItemIsMovable);
+
+  // Позиционируем элемент так, чтобы его центр был в (centerX, centerY)
+  setPos(centerX - radius, centerY - radius);
+
+  qDebug() << "SmoothNode created at center:" << centerX << "," << centerY;
 }
 
 void SmoothNode::addIncomingEdge(SmoothEdge *edge) {

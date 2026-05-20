@@ -89,7 +89,7 @@ public:
   void clearIncomingEdges();
   void clearOutcomingEdges();
 
-  QPointF getCenter() const { return scenePos(); }
+  QPointF getCenter() const;
 
   void setHoverColor(const QColor &color);
   void updateThemeStyle(const class ThemeColors &colors);
