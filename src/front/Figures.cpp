@@ -84,63 +84,17 @@ void SmoothEdge::setHighlighted(bool highlight) {
   update();
 }
 
-// Figures.cpp - добавьте/исправьте эти методы
+// Убираем всю старую реализацию boundingRect и shape
+// Добавляем простую версию:
 
 QRectF SmoothEdge::boundingRect() const {
-  QLineF line = this->line();
-  if (line.length() < 1e-5) {
-    return QGraphicsLineItem::boundingRect();
-  }
-
-  // Вычисляем стрелку для получения её bounding rect
-  QLineF tempLine = line;
-  std::pair<QPointF, QPointF> arrowP =
-      const_cast<SmoothEdge *>(this)->computeArrowPos(tempLine);
-
-  // Собираем все точки
-  QPolygonF polygon;
-  polygon << line.p1() << line.p2() << arrowP.first << arrowP.second;
-
-  // Добавляем небольшой отступ для антиалиасинга
-  QRectF rect = polygon.boundingRect();
-  rect.adjust(-3, -3, 3, 3);
-
+  QRectF rect = QGraphicsLineItem::boundingRect();
+  // Добавляем запас для стрелки (14 пикселей + небольшой отступ)
+  rect.adjust(-18, -18, 18, 18);
   return rect;
 }
 
-QPainterPath SmoothEdge::shape() const {
-  QPainterPath path;
-
-  QLineF line = this->line();
-  if (line.length() < 1e-5) {
-    path.addRect(boundingRect());
-    return path;
-  }
-
-  // Вычисляем стрелку
-  QLineF tempLine = line;
-  std::pair<QPointF, QPointF> arrowP =
-      const_cast<SmoothEdge *>(this)->computeArrowPos(tempLine);
-
-  // Добавляем линию с толщиной пера
-  QPen pen = this->pen();
-  QPainterPathStroker stroker;
-  stroker.setWidth(pen.widthF() + 4); // Добавляем запас для кликабельности
-  stroker.setCapStyle(Qt::RoundCap);
-  stroker.setJoinStyle(Qt::RoundJoin);
-
-  QPainterPath linePath;
-  linePath.moveTo(line.p1());
-  linePath.lineTo(line.p2());
-  path = stroker.createStroke(linePath);
-
-  // Добавляем стрелку
-  QPolygonF arrowHead;
-  arrowHead << line.p2() << arrowP.first << arrowP.second;
-  path.addPolygon(arrowHead);
-
-  return path;
-}
+// Полностью удаляем метод shape() - он больше не нужен
 
 std::pair<QPointF, QPointF> SmoothEdge::computeArrowPos(QLineF &line) {
   if (!startNode_ || !endNode_) {
@@ -176,8 +130,8 @@ std::pair<QPointF, QPointF> SmoothEdge::computeArrowPos(QLineF &line) {
   // Угол для стрелки
   double angle = std::atan2(direction.y(), direction.x());
 
-  // Размер стрелки (увеличим для наглядности)
-  qreal arrowSize = 14.0;
+  // Размер стрелки (можно уменьшить для аккуратности)
+  qreal arrowSize = 12.0; // Было 14, можно сделать поменьше
 
   // Точки для стрелки (треугольник)
   QPointF arrowP1 = endPoint - QPointF(std::cos(angle - M_PI / 3) * arrowSize,
@@ -198,16 +152,21 @@ void SmoothEdge::paint(QPainter *painter,
   Q_UNUSED(option);
   Q_UNUSED(widget);
 
+  // Получаем линию с учётом границ узлов
   QLineF line = this->line();
+
+  // Пересчитываем линию и стрелку
+  QLineF tempLine = line;
+  std::pair<QPointF, QPointF> arrowP = computeArrowPos(tempLine);
+
+  // Используем пересчитанную линию
+  line = tempLine;
 
   if (line.length() < 1e-5)
     return;
 
   painter->save();
   painter->setRenderHint(QPainter::Antialiasing, true);
-
-  // Получаем точки для стрелки
-  std::pair<QPointF, QPointF> arrowP = computeArrowPos(line);
 
   // Рисуем линию
   painter->setPen(pen());

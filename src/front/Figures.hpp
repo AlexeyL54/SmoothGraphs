@@ -53,7 +53,6 @@ public:
   void setHighlighted(bool highlight);
   bool isHighlighted() const { return isHighlighted_; }
   QRectF boundingRect() const override;
-  QPainterPath shape() const override;
 
 protected:
   void contextMenuEvent(QGraphicsSceneContextMenuEvent *event) override;
