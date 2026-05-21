@@ -47,6 +47,7 @@ protected:
   void mousePressEvent(QMouseEvent *event) override;
   void mouseMoveEvent(QMouseEvent *event) override;
   void resizeEvent(QResizeEvent *event) override;
+  void keyPressEvent(QKeyEvent *event) override;
 
 private:
   QGraphicsScene *scene_;
@@ -65,13 +66,17 @@ private:
   QPushButton *zoomInBtn_;
   QPushButton *zoomOutBtn_;
 
+  QPushButton *helpBtn_;
+
   qreal currentZoom_ = 1.0;
   const qreal ZOOM_STEP = 1.25;
   const qreal MIN_ZOOM = 0.2;
   const qreal MAX_ZOOM = 5.0;
 
   void setupZoomButtons();
-  void updateZoomButtonsPosition();
+  void setupHelpButton();
+  void updateButtonsPosition();
+  void showHelpDialog();
 
 private slots:
   void addFigure();
