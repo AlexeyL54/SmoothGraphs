@@ -26,8 +26,8 @@ void MenuBar::setButtons() {
 
   // Создаем кнопку для сохранения с выпадающим меню
   saveBtn_ = new QToolButton(this);
-  saveBtn_->setText("Сохранить");
-  saveBtn_->setFixedSize(110, 40);
+  saveBtn_->setText("Сохранить▼");
+  saveBtn_->setFixedSize(120, 40);
   saveBtn_->setPopupMode(QToolButton::InstantPopup);
   saveBtn_->setCursor(Qt::PointingHandCursor);
 
@@ -47,8 +47,8 @@ void MenuBar::setButtons() {
 
   // Создаем кнопку для выбора темы
   themeBtn_ = new QToolButton(this);
-  themeBtn_->setText("Тема ▼");
-  themeBtn_->setFixedSize(110, 40);
+  themeBtn_->setText("Тема▼");
+  themeBtn_->setFixedSize(120, 40);
   themeBtn_->setPopupMode(QToolButton::InstantPopup);
   themeBtn_->setCursor(Qt::PointingHandCursor);
 
@@ -58,7 +58,7 @@ void MenuBar::setButtons() {
   QAction *lightAction = themeMenu->addAction("☀️ Светлая");
   lightAction->setData(Light);
 
-  themeMenu->addSeparator(); // Разделитель для красоты
+  themeMenu->addSeparator();
 
   QAction *darkAction = themeMenu->addAction("☁️ Тёмная");
   darkAction->setData(Dark);
@@ -67,11 +67,11 @@ void MenuBar::setButtons() {
 
   runBtn_ = new QPushButton();
   runBtn_->setIcon(style()->standardIcon(QStyle::SP_MediaPlay));
-  runBtn_->setFixedSize(110, 40);
+  runBtn_->setFixedSize(120, 40);
 
   stopBtn_ = new QPushButton();
   stopBtn_->setIcon(style()->standardIcon(QStyle::SP_MediaStop));
-  stopBtn_->setFixedSize(110, 40);
+  stopBtn_->setFixedSize(120, 40);
 
   wrapBtn_ = new QPushButton();
   wrapBtn_->setObjectName("wrapBtn");
