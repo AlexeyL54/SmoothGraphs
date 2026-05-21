@@ -9,8 +9,8 @@
 /**
  * @brief Конструктор класса Graph.
  */
-Graph::Graph() : isModified_(false), nextNodeId_(1) {}
-
+Graph::Graph(Logger *logger)
+    : isModified_(false), nextNodeId_(1), logger_(logger) {}
 /**
  * @brief Деструктор класса Graph.
  */
@@ -339,26 +339,54 @@ bool Graph::loadFromFile(const std::string &filepath, QGraphicsScene *scene) {
 // Вспомогательная функция для топологической сортировки (DFS)
 static void topologicalSortUtil(SmoothNode *node,
                                 std::unordered_map<SmoothNode *, bool> &visited,
-                                std::vector<SmoothNode *> &stack) {
+                                std::vector<SmoothNode *> &stack,
+                                Logger *logger) {
+  if (logger) {
+    logger->addMessage(
+        INFO,
+        QString("Посещаем узел ID: %1 для топологической сортировки (DFS)")
+            .arg(node->getId()));
+  }
+
   visited[node] = true;
 
   // Рекурсивно посещаем всех соседей (исходящие ребра)
   for (SmoothEdge *edge : node->getOutcomingEdges()) {
     SmoothNode *neighbor = edge->getEndNode();
     if (!visited[neighbor]) {
-      topologicalSortUtil(neighbor, visited, stack);
+      if (logger) {
+        logger->addMessage(
+            INFO, QString("  Переход по ребру: ID %1 -> ID %2 (вес: %3)")
+                      .arg(node->getId())
+                      .arg(neighbor->getId())
+                      .arg(edge->getWeight()));
+      }
+      topologicalSortUtil(neighbor, visited, stack, logger);
     }
   }
 
   // Добавляем текущий узел в стек после обработки всех соседей
   stack.push_back(node);
+  if (logger) {
+    logger->addMessage(
+        INFO,
+        QString("Добавляем узел ID: %1 в стек (после обработки всех потомков)")
+            .arg(node->getId()));
+  }
 }
 
 // Получение топологически отсортированного списка узлов
 static std::vector<SmoothNode *>
-getTopologicalOrder(const std::vector<SmoothNode *> &allNodes) {
+getTopologicalOrder(const std::vector<SmoothNode *> &allNodes, Logger *logger) {
   std::unordered_map<SmoothNode *, bool> visited;
   std::vector<SmoothNode *> stack;
+
+  if (logger) {
+    logger->addMessage(
+        INFO, "Начинаем топологическую сортировку графа (алгоритм DFS)");
+    logger->addMessage(INFO,
+                       QString("Всего узлов в графе: %1").arg(allNodes.size()));
+  }
 
   for (SmoothNode *node : allNodes) {
     visited[node] = false;
@@ -366,49 +394,73 @@ getTopologicalOrder(const std::vector<SmoothNode *> &allNodes) {
 
   for (SmoothNode *node : allNodes) {
     if (!visited[node]) {
-      topologicalSortUtil(node, visited, stack);
+      if (logger) {
+        logger->addMessage(
+            INFO, QString("Запускаем DFS с узла ID: %1").arg(node->getId()));
+      }
+      topologicalSortUtil(node, visited, stack, logger);
     }
   }
 
-  // stack содержит узлы в обратном топологическом порядке (последний
-  // обработанный - первый в списке) Для прямого прохождения (от источника к
-  // стоку) нам нужен обычный топологический порядок. Но для обратного прохода
-  // (от стока к источнику) удобнее использовать обратный порядок. Вернем как
-  // есть, будем обрабатывать с конца.
+  if (logger) {
+    logger->addMessage(SUCCESS, "Топологическая сортировка завершена");
+    QString orderStr = "Порядок узлов (от стоков к источникам): ";
+    for (SmoothNode *node : stack) {
+      orderStr += QString::number(node->getId()) + " ";
+    }
+    logger->addMessage(INFO, orderStr);
+  }
+
   return stack;
 }
 
 std::vector<SmoothNode *> Graph::findShortestPath(SmoothNode *from,
                                                   SmoothNode *to) {
+  // Очищаем логгер перед новым поиском
+  if (logger_) {
+    logger_->clear();
+    logger_->addMessage(INFO, "=== НАЧАЛО ПОИСКА КРАТЧАЙШЕГО ПУТИ ===");
+  }
+
   if (!from || !to) {
+    if (logger_) {
+      logger_->addMessage(ERROR,
+                          "Ошибка: начальный или конечный узел не определён");
+      logger_->addMessage(INFO, "=== КОНЕЦ ПОИСКА (ОШИБКА) ===");
+    }
     return {};
   }
 
+  if (logger_) {
+    logger_->addMessage(INFO,
+                        QString("Стартовый узел: ID %1").arg(from->getId()));
+    logger_->addMessage(INFO, QString("Целевой узел: ID %1").arg(to->getId()));
+  }
+
   if (from == to) {
+    if (logger_) {
+      logger_->addMessage(
+          SUCCESS, "Стартовый и конечный узлы совпадают. Путь найден: [0]");
+      logger_->addMessage(INFO, "=== КОНЕЦ ПОИСКА (УСПЕХ) ===");
+    }
     return {from};
   }
 
   // 1. Получаем все узлы графа
   std::vector<SmoothNode *> allNodes = getNodes();
+  if (logger_) {
+    logger_->addMessage(
+        INFO, QString("Получено узлов для обработки: %1").arg(allNodes.size()));
+  }
 
   // 2. Топологическая сортировка
-  // Важно: этот алгоритм работает ТОЛЬКО для DAG. Если есть циклы, поведение не
-  // определено.
-  std::vector<SmoothNode *> topoOrder = getTopologicalOrder(allNodes);
-
-  // topoOrder сейчас содержит узлы в порядке финиша DFS.
-  // Чтобы получить классический топологический порядок (источники первыми),
-  // нужно развернуть. Но мы будем делать ОБРАТНЫЙ проход (от to к from),
-  // поэтому нам удобно обрабатывать узлы в порядке, обратном топологическому
-  // (стоки первыми). Так как getTopologicalOrder возвращает узлы в порядке
-  // "пост-порядка" (потомки перед родителями в стеке), то итерация с начала
-  // вектора даст нам узлы, близкие к стокам, первыми. Это то, что нам нужно для
-  // обратного прохода.
+  if (logger_) {
+    logger_->addMessage(INFO, "Проверка графа на ацикличность...");
+  }
+  std::vector<SmoothNode *> topoOrder = getTopologicalOrder(allNodes, logger_);
 
   // 3. Инициализация структур данных для обратного прохода
-  // dist[node] - кратчайшее расстояние от node до to
   std::unordered_map<SmoothNode *, float> dist;
-  // nextNode[node] - следующий узел на кратчайшем пути от node к to
   std::unordered_map<SmoothNode *, SmoothNode *> nextNode;
 
   const float INF = std::numeric_limits<float>::max();
@@ -418,59 +470,146 @@ std::vector<SmoothNode *> Graph::findShortestPath(SmoothNode *from,
     nextNode[node] = nullptr;
   }
 
-  dist[to] = 0.0f; // Расстояние от to до to равно 0
+  dist[to] = 0.0f;
+  if (logger_) {
+    logger_->addMessage(
+        INFO, QString("Инициализация: dist[ID %1] = 0").arg(to->getId()));
+  }
 
   // 4. Обратный проход ДП
-  // Обрабатываем узлы в топологическом порядке (так, чтобы при обработке узла
-  // u, все его потомки (куда ведут исходящие ребра) уже были обработаны). В
-  // нашем topoOrder (результат DFS post-order) узлы идут в порядке: потомки,
-  // затем предки. Поэтому простая итерация по topoOrder подходит для обратного
-  // прохода (от стоков к источникам).
+  if (logger_) {
+    logger_->addMessage(
+        INFO, "Начинаем обратный проход динамического программирования...");
+  }
+  int processedCount = 0;
 
   for (SmoothNode *u : topoOrder) {
-    // Если до текущего узла u еще не удалось добраться от to (dist[u] == INF),
-    // то он не лежит на пути к to, пропускаем.
-    // Исключение: сам to, который мы инициализировали.
     if (dist[u] == INF) {
       continue;
     }
 
+    processedCount++;
+    if (logger_) {
+      logger_->addMessage(
+          INFO, QString("Обрабатываем узел ID: %1 (расстояние до цели: %2)")
+                    .arg(u->getId())
+                    .arg(dist[u] == INF ? "∞" : QString::number(dist[u])));
+    }
+
     // Рассматриваем все входящие ребра в u: (v -> u)
-    // Мы хотим обновить dist[v] используя dist[u]
     for (SmoothEdge *inEdge : u->getIncomingEdges()) {
       SmoothNode *v = inEdge->getStartNode();
       float weight = inEdge->getWeight();
 
-      // Если путь от v до to через u короче, чем известный путь от v до to
       if (dist[v] > weight + dist[u]) {
+        float oldDist = dist[v];
         dist[v] = weight + dist[u];
-        nextNode[v] = u; // Запоминаем, что из v лучше идти в u
+        nextNode[v] = u;
+
+        if (logger_) {
+          logger_->addMessage(
+              INFO, QString("  Обновление пути к узлу ID %1: %2 -> %3 (через "
+                            "ID %4, вес ребра: %5)")
+                        .arg(v->getId())
+                        .arg(oldDist == INF ? "∞" : QString::number(oldDist))
+                        .arg(QString::number(dist[v]))
+                        .arg(u->getId())
+                        .arg(weight));
+        }
       }
     }
   }
 
+  if (logger_) {
+    logger_->addMessage(INFO, QString("Обработано узлов: %1 из %2")
+                                  .arg(processedCount)
+                                  .arg(topoOrder.size()));
+  }
+
   // 5. Проверка достижимости
   if (dist[from] == INF) {
-    // Пути нет
+    if (logger_) {
+      logger_->addMessage(ERROR,
+                          QString("Путь от узла ID %1 до узла ID %2 не найден!")
+                              .arg(from->getId())
+                              .arg(to->getId()));
+      logger_->addMessage(INFO, "=== КОНЕЦ ПОИСКА (ПУТЬ НЕ НАЙДЕН) ===");
+    }
     return {};
+  }
+
+  if (logger_) {
+    logger_->addMessage(SUCCESS,
+                        QString("Кратчайшее расстояние от ID %1 до ID %2: %3")
+                            .arg(from->getId())
+                            .arg(to->getId())
+                            .arg(dist[from]));
   }
 
   // 6. Прямой проход: восстановление пути от from к to
+  if (logger_) {
+    logger_->addMessage(INFO, "Восстанавливаем путь...");
+  }
   std::vector<SmoothNode *> path;
   SmoothNode *current = from;
+  float totalWeight = 0.0f;
 
   while (current != nullptr) {
     path.push_back(current);
+    if (logger_) {
+      logger_->addMessage(
+          INFO,
+          QString("  Добавляем в путь узел ID: %1").arg(current->getId()));
+    }
+
     if (current == to) {
       break;
     }
-    current = nextNode[current];
+
+    SmoothNode *next = nextNode[current];
+    if (next) {
+      // Находим вес ребра для отображения
+      for (SmoothEdge *edge : current->getOutcomingEdges()) {
+        if (edge->getEndNode() == next) {
+          totalWeight += edge->getWeight();
+          if (logger_) {
+            logger_->addMessage(INFO,
+                                QString("    Ребро ID %1 -> ID %2 (вес: %3)")
+                                    .arg(current->getId())
+                                    .arg(next->getId())
+                                    .arg(edge->getWeight()));
+          }
+          break;
+        }
+      }
+    }
+    current = next;
   }
 
-  // Если путь не завершился в to (например, цикл или ошибка), возвращаем пустой
-  // вектор
+  // Если путь не завершился в to, возвращаем пустой вектор
   if (path.back() != to) {
+    if (logger_) {
+      logger_->addMessage(ERROR, "Ошибка при восстановлении пути!");
+      logger_->addMessage(INFO, "=== КОНЕЦ ПОИСКА (ОШИБКА) ===");
+    }
     return {};
+  }
+
+  if (logger_) {
+    logger_->addMessage(
+        SUCCESS,
+        QString("Путь найден! Количество узлов в пути: %1, общий вес: %2")
+            .arg(path.size())
+            .arg(totalWeight));
+
+    QString pathStr = "Путь: ";
+    for (size_t i = 0; i < path.size(); ++i) {
+      if (i > 0)
+        pathStr += " -> ";
+      pathStr += QString::number(path[i]->getId());
+    }
+    logger_->addMessage(INFO, pathStr);
+    logger_->addMessage(INFO, "=== КОНЕЦ ПОИСКА (УСПЕХ) ===");
   }
 
   return path;

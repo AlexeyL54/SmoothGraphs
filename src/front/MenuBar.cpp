@@ -1,9 +1,5 @@
 #include "MenuBar.hpp"
 #include "ThemeManager.hpp"
-#include "qboxlayout.h"
-#include "qnamespace.h"
-#include "qpushbutton.h"
-#include "qwidget.h"
 
 MenuBar::MenuBar(QWidget *parent) : QWidget(parent) {
   mainLaout_ = new QVBoxLayout(this);
@@ -28,8 +24,26 @@ void MenuBar::setButtons() {
   openBtn_ = new QPushButton("Открыть");
   openBtn_->setFixedSize(110, 40);
 
-  saveBtn_ = new QPushButton("Сохранить");
+  // Создаем кнопку для сохранения с выпадающим меню
+  saveBtn_ = new QToolButton(this);
+  saveBtn_->setText("Сохранить");
   saveBtn_->setFixedSize(110, 40);
+  saveBtn_->setPopupMode(QToolButton::InstantPopup);
+  saveBtn_->setCursor(Qt::PointingHandCursor);
+
+  // Создаем меню для кнопки сохранения
+  QMenu *saveMenu = new QMenu(saveBtn_);
+
+  QAction *saveGraphAction = saveMenu->addAction("Сохранить граф");
+  QAction *saveSolutionAction = saveMenu->addAction("Сохранить решение");
+
+  // Подключаем действия к сигналам
+  connect(saveGraphAction, &QAction::triggered, this,
+          &MenuBar::saveGraphRequested);
+  connect(saveSolutionAction, &QAction::triggered, this,
+          &MenuBar::saveSolutionRequested);
+
+  saveBtn_->setMenu(saveMenu);
 
   // Создаем кнопку для выбора темы
   themeBtn_ = new QToolButton(this);
@@ -38,7 +52,7 @@ void MenuBar::setButtons() {
   themeBtn_->setPopupMode(QToolButton::InstantPopup);
   themeBtn_->setCursor(Qt::PointingHandCursor);
 
-  // Создаем меню для кнопки
+  // Создаем меню для кнопки темы
   QMenu *themeMenu = new QMenu(themeBtn_);
 
   QAction *lightAction = themeMenu->addAction("☀️ Светлая");

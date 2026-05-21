@@ -21,10 +21,14 @@ public:
 
   // Геттеры для кнопок
   QPushButton *getOpenBtn() const { return openBtn_; }
-  QPushButton *getSaveBtn() const { return saveBtn_; }
+  QToolButton *getSaveBtn() const { return saveBtn_; }
   QToolButton *getThemeBtn() const { return themeBtn_; }
   QPushButton *getRunBtn() const { return runBtn_; }
   QPushButton *getStopBtn() const { return stopBtn_; }
+
+signals:
+  void saveGraphRequested();
+  void saveSolutionRequested();
 
 private:
   const int MAX_HEIGHT_ = 60;
@@ -34,7 +38,7 @@ private:
   QHBoxLayout *buttonLayout_ = nullptr;
 
   QPushButton *openBtn_ = nullptr;
-  QPushButton *saveBtn_ = nullptr;
+  QToolButton *saveBtn_ = nullptr;
   QToolButton *themeBtn_ = nullptr;
   QPushButton *runBtn_ = nullptr;
   QPushButton *stopBtn_ = nullptr;

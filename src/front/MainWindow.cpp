@@ -8,8 +8,11 @@
 #include <QMessageBox>
 #include <QVBoxLayout>
 
+// MainWindow.cpp - исправленный конструктор, подключения для saveBtn_
+
 MainWindow::MainWindow(ThemeManager &themeMng, QWidget *parent)
-    : QWidget(parent), graph_(new Graph()) {
+    : QWidget(parent), logger_(true), graph_(new Graph(&logger_)) {
+
   themeMng_ = &themeMng;
 
   QGraphicsScene *scene = new QGraphicsScene(this);
@@ -73,8 +76,12 @@ MainWindow::MainWindow(ThemeManager &themeMng, QWidget *parent)
             });
   }
 
-  connect(menuBar_->getSaveBtn(), &QPushButton::clicked, this,
+  connect(menuBar_, &MenuBar::saveGraphRequested, this,
           &MainWindow::onSaveGraph);
+  connect(menuBar_, &MenuBar::saveSolutionRequested, this,
+          &MainWindow::onSaveSolution);
+
+  // Обычные кнопки остаются через clicked
   connect(menuBar_->getOpenBtn(), &QPushButton::clicked, this,
           &MainWindow::onOpenGraph);
   connect(menuBar_->getRunBtn(), &QPushButton::clicked, this,
@@ -99,6 +106,42 @@ void MainWindow::resizeEvent(QResizeEvent *event) {
 }
 
 void MainWindow::onThemeChanged() { updateStyle(); }
+
+bool MainWindow::saveSolutionToFile(const QString &filepath) {
+  if (logger_.getLog().isEmpty()) {
+    showNotification("Нет данных о решении! Сначала выполните поиск пути.",
+                     true);
+    return false;
+  }
+
+  // Используем существующий метод saveToFile логгера
+  int result = logger_.saveToFile(filepath);
+
+  if (result >= 0) {
+    showNotification(
+        QString("Решение успешно сохранено в файл:\n%1\n(Сообщений: %2)")
+            .arg(filepath)
+            .arg(result));
+  } else {
+    showNotification("Ошибка при сохранении решения!", true);
+  }
+
+  return result >= 0;
+}
+
+void MainWindow::onSaveSolution() {
+  QString filepath = QFileDialog::getSaveFileName(
+      this, "Сохранить решение", QString(),
+      "Text Files (*.txt);;Log Files (*.log);;All Files (*)");
+
+  if (!filepath.isEmpty()) {
+    if (!filepath.endsWith(".txt", Qt::CaseInsensitive) &&
+        !filepath.endsWith(".log", Qt::CaseInsensitive)) {
+      filepath += ".txt";
+    }
+    saveSolutionToFile(filepath);
+  }
+}
 
 QString MainWindow::generateGlobalStyleSheet() const {
   ThemeColors colors = themeMng_->getThemeColors();

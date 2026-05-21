@@ -1,7 +1,7 @@
-// Graph.hpp
 #pragma once
 
 #include "../front/Figures.hpp"
+#include "Logger.hpp"
 
 #include <QGraphicsScene>
 #include <QList>
@@ -28,7 +28,7 @@ public:
   /**
    * @brief Конструктор класса Graph.
    */
-  Graph();
+  explicit Graph(Logger *logger = nullptr);
 
   /**
    * @brief Деструктор класса Graph.
@@ -137,11 +137,10 @@ public:
 private:
   std::unordered_map<ID, SmoothNode *> nodes_;    // Узлы графа
   std::unordered_map<ID, std::list<ID>> adjList_; // Список смежности
-  // std::unordered_map<ID, std::unordered_map<ID, float>>
-  // edgeWeights_;             // Веса рёбер
-  std::string currentFilePath_; // Путь к текущему файлу
-  bool isModified_;             // Флаг модификации
-  ID nextNodeId_;               // Следующий доступный ID
+  std::string currentFilePath_;                   // Путь к текущему файлу
+  bool isModified_;                               // Флаг модификации
+  ID nextNodeId_;                                 // Следующий доступный ID
+  Logger *logger_;                                // Логгер для поиска пути
 
   struct Rout {
     float bellmanValue;

@@ -9,6 +9,7 @@
 #include <QWidget>
 
 #include "../back/Graph.hpp"
+#include "../back/Logger.hpp"
 #include "GraphView.hpp"
 #include "MenuBar.hpp"
 #include "ThemeManager.hpp"
@@ -28,6 +29,7 @@ private:
   MenuBar *menuBar_ = nullptr;
   ThemeManager *themeMng_;
   Graph *graph_;
+  Logger logger_;
 
   QString generateGlobalStyleSheet() const;
   QString generateMenuBarStyleSheet() const;
@@ -37,6 +39,7 @@ private:
   bool saveGraphToFile(const QString &filepath);
   bool loadGraphFromFile(const QString &filepath);
   void findAndVisualizePath();
+  bool saveSolutionToFile(const QString &filepath);
 
 protected:
   void resizeEvent(QResizeEvent *event) override;
@@ -44,6 +47,7 @@ protected:
 private slots:
   void onThemeChanged();
   void onSaveGraph();
+  void onSaveSolution();
   void onOpenGraph();
   void onFindPath();
   void onStopPath();
