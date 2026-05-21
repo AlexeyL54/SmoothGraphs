@@ -459,6 +459,30 @@ void SmoothNode::setHoverColor(const QColor &color) { hoverColor_ = color; }
 
 void SmoothNode::restoreDefaultColor() { setBrush(defaultColor_); }
 
+void SmoothNode::paint(QPainter *painter,
+                       const QStyleOptionGraphicsItem *option,
+                       QWidget *widget) {
+  Q_UNUSED(option);
+  Q_UNUSED(widget);
+
+  // Рисуем круг
+  painter->setRenderHint(QPainter::Antialiasing, true);
+  painter->setBrush(brush());
+  painter->setPen(pen());
+  painter->drawEllipse(rect());
+
+  // Рисуем ID узла в центре
+  painter->setPen(QPen(textColor_, 1));
+  QFont font = painter->font();
+  font.setPointSize(10);
+  font.setBold(true);
+  painter->setFont(font);
+
+  QString idText = QString::number(id_);
+  QRectF textRect = rect();
+  painter->drawText(textRect, Qt::AlignCenter, idText);
+}
+
 void SmoothNode::updateThemeStyle(const ThemeColors &colors) {
   defaultColor_ = colors.nodeDefault;
   hoverColor_ = colors.nodeHover;
@@ -466,6 +490,7 @@ void SmoothNode::updateThemeStyle(const ThemeColors &colors) {
   startNodeColor_ = colors.startNode;
   endNodeColor_ = colors.endNode;
   pathNodeColor_ = colors.pathNode;
+  textColor_ = colors.textPrimary;
 
   setBrush(defaultColor_);
   setPen(QPen(borderColor_, 1));

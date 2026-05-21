@@ -116,6 +116,8 @@ protected:
   void hoverLeaveEvent(QGraphicsSceneHoverEvent *event) override;
   QVariant itemChange(GraphicsItemChange change,
                       const QVariant &value) override;
+  void paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
+             QWidget *widget) override;
 
 private:
   QList<SmoothEdge *> incomingEdges_;
@@ -127,6 +129,7 @@ private:
   QColor startNodeColor_;
   QColor endNodeColor_;
   QColor pathNodeColor_;
+  QColor textColor_;
 
   size_t id_;
   NodeRole role_ = NodeRole::Normal;
