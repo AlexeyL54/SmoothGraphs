@@ -4,11 +4,101 @@
 
 #include <QMenu>
 #include <QMessageBox>
+#include <QVBoxLayout>
 
 GraphView::GraphView(QGraphicsScene *scene, QWidget *parent)
     : QGraphicsView(scene, parent), scene_(scene) {
   setMouseTracking(true);
   setupNodeSelectionBridge();
+  setupZoomButtons();
+}
+
+void GraphView::setupZoomButtons() {
+  zoomInBtn_ = new QPushButton("+", this);
+  zoomOutBtn_ = new QPushButton("-", this);
+
+  zoomInBtn_->setFixedSize(40, 40);
+  zoomOutBtn_->setFixedSize(40, 40);
+
+  // Делаем кнопки круглыми
+  zoomInBtn_->setStyleSheet(R"(
+    QPushButton {
+      background-color: rgba(60, 60, 70, 200);
+      color: white;
+      border: none;
+      border-radius: 20px;
+      font-size: 20px;
+      font-weight: bold;
+    }
+    QPushButton:hover {
+      background-color: rgba(80, 80, 100, 220);
+    }
+    QPushButton:pressed {
+      background-color: rgba(50, 50, 60, 220);
+    }
+  )");
+
+  zoomOutBtn_->setStyleSheet(R"(
+    QPushButton {
+      background-color: rgba(60, 60, 70, 200);
+      color: white;
+      border: none;
+      border-radius: 20px;
+      font-size: 24px;
+      font-weight: bold;
+    }
+    QPushButton:hover {
+      background-color: rgba(80, 80, 100, 220);
+    }
+    QPushButton:pressed {
+      background-color: rgba(50, 50, 60, 220);
+    }
+  )");
+
+  // Подключаем сигналы
+  connect(zoomInBtn_, &QPushButton::clicked, this, &GraphView::zoomIn);
+  connect(zoomOutBtn_, &QPushButton::clicked, this, &GraphView::zoomOut);
+
+  // Поднимаем кнопки выше сцены
+  zoomInBtn_->raise();
+  zoomOutBtn_->raise();
+}
+
+void GraphView::resizeEvent(QResizeEvent *event) {
+  QGraphicsView::resizeEvent(event);
+  updateZoomButtonsPosition();
+}
+
+void GraphView::updateZoomButtonsPosition() {
+  if (!zoomInBtn_ || !zoomOutBtn_)
+    return;
+
+  int margin = 20;
+  int buttonSpacing = 10;
+
+  // Позиционируем кнопку "-" в правом нижнем углу
+  zoomOutBtn_->setGeometry(width() - zoomOutBtn_->width() - margin,
+                           height() - zoomOutBtn_->height() - margin,
+                           zoomOutBtn_->width(), zoomOutBtn_->height());
+
+  // Позиционируем кнопку "+" слева от кнопки "-"
+  zoomInBtn_->setGeometry(
+      zoomOutBtn_->x() - zoomInBtn_->width() - buttonSpacing, zoomOutBtn_->y(),
+      zoomInBtn_->width(), zoomInBtn_->height());
+}
+
+void GraphView::zoomIn() {
+  if (currentZoom_ * ZOOM_STEP <= MAX_ZOOM) {
+    currentZoom_ *= ZOOM_STEP;
+    scale(ZOOM_STEP, ZOOM_STEP);
+  }
+}
+
+void GraphView::zoomOut() {
+  if (currentZoom_ / ZOOM_STEP >= MIN_ZOOM) {
+    currentZoom_ /= ZOOM_STEP;
+    scale(1.0 / ZOOM_STEP, 1.0 / ZOOM_STEP);
+  }
 }
 
 void GraphView::contextMenuEvent(QContextMenuEvent *event) {

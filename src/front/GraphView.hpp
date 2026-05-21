@@ -6,14 +6,11 @@
 #include <QGraphicsView>
 #include <QMouseEvent>
 #include <QPointF>
+#include <QPushButton>
 
 #include "Figures.hpp"
 #include "ThemeManager.hpp"
 
-/**
- * @class GraphView
- * @brief Представление графа на основе QGraphicsView.
- */
 class GraphView : public QGraphicsView {
   Q_OBJECT
 
@@ -33,6 +30,9 @@ public:
   void setThemeManager(ThemeManager *manager) { themeMng_ = manager; }
   ThemeManager *getThemeManager() const { return themeMng_; }
 
+  void zoomIn();
+  void zoomOut();
+
 signals:
   void nodeAdded(SmoothNode *node);
   void edgeAdded(SmoothEdge *edge);
@@ -46,6 +46,7 @@ protected:
   void contextMenuEvent(QContextMenuEvent *event) override;
   void mousePressEvent(QMouseEvent *event) override;
   void mouseMoveEvent(QMouseEvent *event) override;
+  void resizeEvent(QResizeEvent *event) override;
 
 private:
   QGraphicsScene *scene_;
@@ -59,6 +60,18 @@ private:
   std::vector<SmoothNode *> currentPath_;
 
   ThemeManager *themeMng_ = nullptr;
+
+  // Кнопки масштабирования
+  QPushButton *zoomInBtn_;
+  QPushButton *zoomOutBtn_;
+
+  qreal currentZoom_ = 1.0;
+  const qreal ZOOM_STEP = 1.25;
+  const qreal MIN_ZOOM = 0.2;
+  const qreal MAX_ZOOM = 5.0;
+
+  void setupZoomButtons();
+  void updateZoomButtonsPosition();
 
 private slots:
   void addFigure();
