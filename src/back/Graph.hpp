@@ -137,8 +137,8 @@ public:
 private:
   std::unordered_map<ID, SmoothNode *> nodes_;    // Узлы графа
   std::unordered_map<ID, std::list<ID>> adjList_; // Список смежности
-  std::unordered_map<ID, std::unordered_map<ID, float>>
-      edgeWeights_;             // Веса рёбер
+  // std::unordered_map<ID, std::unordered_map<ID, float>>
+  // edgeWeights_;             // Веса рёбер
   std::string currentFilePath_; // Путь к текущему файлу
   bool isModified_;             // Флаг модификации
   ID nextNodeId_;               // Следующий доступный ID

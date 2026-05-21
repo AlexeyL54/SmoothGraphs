@@ -47,7 +47,7 @@ public:
   void updatePosition();
   SmoothNode *getStartNode() const { return startNode_; }
   SmoothNode *getEndNode() const { return endNode_; }
-  void setWeight(float weight) { weight_ = weight; }
+  void setWeight(float weight);
   float getWeight() const { return weight_; }
   void updateThemeStyle(const class ThemeColors &colors);
   void setHighlighted(bool highlight);
@@ -65,10 +65,13 @@ private:
   float weight_;
   QColor defaultColor_;
   QColor highlightColor_;
+  QColor textColor_;
   bool isHighlighted_ = false;
 
   std::pair<QPointF, QPointF> computeArrowPos(QLineF &line);
   void paintArrow(QPainter *painter, QLineF &line, QPointF p1, QPointF p2);
+  void paintWeight(QPainter *painter, const QLineF &line);
+  void showWeightDialog();
 
   mutable QPolygonF cachedArrowHead_;
   mutable QLineF cachedLine_;

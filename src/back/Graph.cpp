@@ -70,7 +70,7 @@ void Graph::addEdge(SmoothEdge *edge) {
   }
 
   adjList_[from].push_back(to);
-  edgeWeights_[from][to] = edge->getWeight();
+  // edgeWeights_[from][to] = edge->getWeight();
   isModified_ = true;
   qDebug() << "Edge added to graph:" << from << "->" << to;
 }
@@ -107,15 +107,15 @@ void Graph::deleteNode(ID id) {
 
   nodes_.erase(id);
   adjList_.erase(id);
-  edgeWeights_.erase(id);
+  // edgeWeights_.erase(id);
 
   for (auto &[nodeId, neighbours] : adjList_) {
     neighbours.remove(id);
   }
 
-  for (auto &[from, toMap] : edgeWeights_) {
+  /*for (auto &[from, toMap] : edgeWeights_) {
     toMap.erase(id);
-  }
+  }*/
 
   isModified_ = true;
   qDebug() << "Node deleted from graph:" << id;
@@ -130,7 +130,7 @@ void Graph::deleteEdge(ID from, ID to) {
   auto iter = std::find(adjList_[from].begin(), adjList_[from].end(), to);
   if (iter != adjList_[from].end()) {
     adjList_[from].erase(iter);
-    edgeWeights_[from].erase(to);
+    // edgeWeights_[from].erase(to);
     isModified_ = true;
     qDebug() << "Edge deleted from graph:" << from << "->" << to;
   } else {
@@ -144,7 +144,7 @@ void Graph::deleteEdge(ID from, ID to) {
 void Graph::clear() {
   nodes_.clear();
   adjList_.clear();
-  edgeWeights_.clear();
+  // edgeWeights_.clear();
   currentFilePath_.clear();
   isModified_ = false;
   nextNodeId_ = 1;
@@ -273,7 +273,7 @@ void Graph::createEdgesFromData(
       toIt->second->addIncomingEdge(edge);
 
       adjList_[from].push_back(to);
-      edgeWeights_[from][to] = weight;
+      // edgeWeights_[from][to] = weight;
 
       qDebug() << "Created edge:" << from << "->" << to << "weight:" << weight;
     } else {

@@ -1,29 +1,27 @@
 #include "Figures.hpp"
 #include "GraphView.hpp"
 #include "ThemeManager.hpp"
-#include "qlist.h"
-#include "qlogging.h"
-#include "qpoint.h"
-#include "qtypes.h"
+#include "qaction.h"
 
 #include <QApplication>
 #include <QDebug>
+#include <QDoubleValidator>
 #include <QGraphicsEllipseItem>
 #include <QGraphicsScene>
 #include <QGraphicsSceneContextMenuEvent>
 #include <QGraphicsView>
+#include <QInputDialog>
 #include <QMenu>
 #include <QMouseEvent>
 #include <QObject>
 #include <QPainterPath>
+
 #include <cmath>
 #include <utility>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
-
-// ==================== SmoothEdge Implementation ====================
 
 SmoothEdge::SmoothEdge(SmoothNode *start, SmoothNode *end,
                        QGraphicsItem *parent)
@@ -67,9 +65,15 @@ void SmoothEdge::updatePosition() {
   }
 }
 
+void SmoothEdge::setWeight(float weight) {
+  weight_ = weight;
+  update();
+}
+
 void SmoothEdge::updateThemeStyle(const ThemeColors &colors) {
   defaultColor_ = colors.edgeDefault;
   highlightColor_ = colors.pathEdge;
+  textColor_ = colors.textPrimary;
   setPen(QPen(isHighlighted_ ? highlightColor_ : defaultColor_,
               isHighlighted_ ? 3 : 2));
   update();
@@ -87,28 +91,75 @@ void SmoothEdge::setHighlighted(bool highlight) {
   update();
 }
 
-// Убираем всю старую реализацию boundingRect и shape
-// Добавляем простую версию:
+void SmoothEdge::showWeightDialog() {
+  QInputDialog dialog;
+  dialog.setWindowTitle("Вес ребра");
+  dialog.setLabelText("Введите вес ребра:");
+  dialog.setInputMode(QInputDialog::DoubleInput);
+  dialog.setDoubleMinimum(0.0);
+  dialog.setDoubleMaximum(999999.0);
+  dialog.setDoubleDecimals(3);
+  dialog.setDoubleValue(weight_);
+  dialog.setOkButtonText("OK");
+  dialog.setCancelButtonText("Отмена");
+
+  // Настройка валидатора для запрета ввода букв и отрицательных чисел
+  QLineEdit *lineEdit = dialog.findChild<QLineEdit *>();
+  if (lineEdit) {
+    QDoubleValidator *validator =
+        new QDoubleValidator(0.0, 999999.0, 3, lineEdit);
+    validator->setNotation(QDoubleValidator::StandardNotation);
+    lineEdit->setValidator(validator);
+  }
+
+  if (dialog.exec() == QDialog::Accepted) {
+    setWeight(static_cast<float>(dialog.doubleValue()));
+  }
+}
+
+void SmoothEdge::paintWeight(QPainter *painter, const QLineF &line) {
+  QPointF midPoint = (line.p1() + line.p2()) / 2;
+
+  // Смещаем текст перпендикулярно ребру
+  QPointF direction = line.p2() - line.p1();
+  QPointF perpendicular(-direction.y(), direction.x());
+
+  if (perpendicular.x() != 0 || perpendicular.y() != 0) {
+    double len = std::sqrt(perpendicular.x() * perpendicular.x() +
+                           perpendicular.y() * perpendicular.y());
+    if (len > 0) {
+      perpendicular /= len;
+    }
+  }
+
+  QPointF textPos = midPoint + perpendicular * 15.0;
+
+  QString weightText = QString::number(weight_, 'f', 1);
+  QFont font("Arial", 10, QFont::Bold);
+  QFontMetrics fm(font);
+  QRect textRect = fm.boundingRect(weightText);
+  textRect.translate(textPos.x() - textRect.width() / 2,
+                     textPos.y() - textRect.height() / 2);
+
+  painter->setPen(QPen(textColor_, 1));
+  painter->drawText(textRect, Qt::AlignCenter, weightText);
+  painter->restore();
+}
 
 QRectF SmoothEdge::boundingRect() const {
   QRectF rect = QGraphicsLineItem::boundingRect();
-  // Добавляем запас для стрелки (14 пикселей + небольшой отступ)
-  rect.adjust(-18, -18, 18, 18);
+  rect.adjust(-30, -30, 30, 30);
   return rect;
 }
-
-// Полностью удаляем метод shape() - он больше не нужен
 
 std::pair<QPointF, QPointF> SmoothEdge::computeArrowPos(QLineF &line) {
   if (!startNode_ || !endNode_) {
     return std::make_pair(line.p2(), line.p2());
   }
 
-  // Получаем центры узлов
   QPointF startCenter = startNode_->getCenter();
   QPointF endCenter = endNode_->getCenter();
 
-  // Направление от start к end
   QPointF direction = endCenter - startCenter;
   double length =
       std::sqrt(direction.x() * direction.x() + direction.y() * direction.y());
@@ -117,24 +168,18 @@ std::pair<QPointF, QPointF> SmoothEdge::computeArrowPos(QLineF &line) {
     return std::make_pair(endCenter, endCenter);
   }
 
-  // Нормализованное направление
   QPointF directionNormalized = direction / length;
 
-  // Радиусы узлов
   double startRadius = startNode_->getRadius();
   double endRadius = endNode_->getRadius();
 
-  // Точка на границе стартового узла
   QPointF startPoint = startCenter + directionNormalized * startRadius;
-
-  // Точка на границе конечного узла
   QPointF endPoint = endCenter - directionNormalized * endRadius;
 
   // Угол для стрелки
   double angle = std::atan2(direction.y(), direction.x());
 
-  // Размер стрелки (можно уменьшить для аккуратности)
-  qreal arrowSize = 12.0; // Было 14, можно сделать поменьше
+  qreal arrowSize = 12.0;
 
   // Точки для стрелки (треугольник)
   QPointF arrowP1 = endPoint - QPointF(std::cos(angle - M_PI / 3) * arrowSize,
@@ -142,7 +187,6 @@ std::pair<QPointF, QPointF> SmoothEdge::computeArrowPos(QLineF &line) {
   QPointF arrowP2 = endPoint - QPointF(std::cos(angle + M_PI / 3) * arrowSize,
                                        std::sin(angle + M_PI / 3) * arrowSize);
 
-  // Обновляем линию
   line.setP1(startPoint);
   line.setP2(endPoint);
 
@@ -183,14 +227,13 @@ void SmoothEdge::paint(QPainter *painter,
   arrowHead << line.p2() << arrowP.first << arrowP.second;
   painter->drawPolygon(arrowHead);
 
+  paintWeight(painter, line);
+
   painter->restore();
 }
 
 QPointF SmoothNode::getCenter() const {
-  QPointF center = pos() + QPointF(rect().width() / 2, rect().height() / 2);
-  qDebug() << "Node" << id_ << "getCenter returns:" << center.x() << ","
-           << center.y();
-  return center;
+  return pos() + QPointF(rect().width() / 2, rect().height() / 2);
 }
 
 void SmoothEdge::contextMenuEvent(QGraphicsSceneContextMenuEvent *event) {
@@ -203,22 +246,24 @@ void SmoothEdge::contextMenuEvent(QGraphicsSceneContextMenuEvent *event) {
       scene()->removeItem(this);
   });
 
+  QObject::connect(weightAction, &QAction::triggered, [this]() {
+    if (scene())
+      showWeightDialog();
+  });
+
   menu.exec(event->screenPos());
   event->accept();
 }
 
-// ==================== SmoothNode Implementation ====================
+//////////////////////////////////////////////////////////////////////////////////////////////
 
 SmoothNode::SmoothNode(qreal centerX, qreal centerY, qreal radius,
                        QGraphicsItem *parent)
-    : QGraphicsEllipseItem(0, 0, radius * 2, radius * 2,
-                           parent), // rect от (0,0)
-      id_(0) {
+    : QGraphicsEllipseItem(0, 0, radius * 2, radius * 2, parent), id_(0) {
+
   setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
   setAcceptHoverEvents(true);
   setFlag(QGraphicsItem::ItemIsMovable);
-
-  // Позиционируем элемент так, чтобы его центр был в (centerX, centerY)
   setPos(centerX - radius, centerY - radius);
 
   qDebug() << "SmoothNode created at center:" << centerX << "," << centerY;
@@ -306,7 +351,7 @@ void SmoothNode::clearEnd() {
 QGraphicsView *SmoothNode::getParentView() const {
   if (!scene())
     return nullptr;
-  const auto &views = scene()->views();
+  const QList<QGraphicsView *> &views = scene()->views();
   if (views.isEmpty())
     return nullptr;
   return views.first();
