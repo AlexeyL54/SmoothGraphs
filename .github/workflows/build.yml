@@ -112,118 +112,130 @@ jobs:
           exit 1
         }
 
-    - name: Deploy Qt DLLs (windeployqt)
+    - name: Deploy Qt DLLs (Manual)
       shell: pwsh
       run: |
-        # 1. Находим windeployqt.exe
-        $winDeployQt = Get-Command windeployqt.exe -ErrorAction SilentlyContinue
-
-        if (-not $winDeployQt) {
-            Write-Error "❌ windeployqt.exe not found in PATH"
+        # 1. Находим Qt
+        $windeployqt = Get-Command windeployqt.exe -ErrorAction SilentlyContinue
+        if (-not $windeployqt) {
+            Write-Error "windeployqt.exe not found"
             exit 1
         }
-        $winDeployQtPath = $winDeployQt.Source
-        Write-Host "Using windeployqt from: $winDeployQtPath"
-
-        # 2. Определяем пути для структуры install-qt-action
-        $qtBinDir = Split-Path $winDeployQtPath -Parent
+        
+        $qtBinDir = Split-Path $windeployqt.Source -Parent
         $qtMingwDir = Split-Path $qtBinDir -Parent
-        $qtVersionDir = Split-Path $qtMingwDir -Parent
-        
         $qtPluginDir = Join-Path $qtMingwDir "plugins"
-        $qtQmlDir = Join-Path $qtMingwDir "qml"
-
-        Write-Host "Qt Version Dir: $qtVersionDir"
-        Write-Host "Qt Mingw Dir: $qtMingwDir"
+        
+        Write-Host "Qt Bin Dir: $qtBinDir"
         Write-Host "Qt Plugin Dir: $qtPluginDir"
-        Write-Host "Qt Qml Dir: $qtQmlDir"
-
-        if (-not (Test-Path $qtPluginDir)) {
-            Write-Error "❌ Plugins directory not found at: $qtPluginDir"
-            exit 1
-        }
-
-        # Путь к приложению
-        $appPath = "${{ github.workspace }}\install\bin\SmoothGraphs.exe"
-
+        
+        $appDir = "${{ github.workspace }}\install\bin"
+        $appPath = Join-Path $appDir "SmoothGraphs.exe"
+        
         if (-not (Test-Path $appPath)) {
-            Write-Error "❌ Application executable not found at: $appPath"
+            Write-Error "App not found: $appPath"
             exit 1
         }
-
-        # 3. Запуск windeployqt с явным указанием путей
-        Write-Host "Running windeployqt..."
         
-        # Добавляем bin Qt в PATH
-        $env:PATH = "$qtBinDir;$env:PATH"
+        # 2. Копируем основные Qt DLL
+        Write-Host "Copying Qt DLLs..."
+        $qtDlls = @(
+            "Qt6Core.dll",
+            "Qt6Gui.dll",
+            "Qt6Widgets.dll"
+        )
         
-        # Основная команда с указанием всех необходимых путей
-        & $winDeployQtPath `
-            --release `
-            --no-compiler-runtime `
-            --no-opengl-sw `
-            --no-translations `
-            --dir "$($appPath | Split-Path)" `
-            --libdir "$($appPath | Split-Path)" `
-            --plugindir "$qtPluginDir" `
-            "$appPath"
-
-        if ($LASTEXITCODE -ne 0) {
-            Write-Host "First attempt failed, trying with explicit plugin path..."
-            
-            # Альтернативный способ: используем параметр --path для указания директории с плагинами
-            & $winDeployQtPath --release --no-compiler-runtime --no-translations --plugindir "$qtPluginDir" "$appPath"
-            
-            if ($LASTEXITCODE -ne 0) {
-                Write-Error "❌ windeployqt failed with exit code $LASTEXITCODE"
-                exit 1
+        foreach ($dll in $qtDlls) {
+            $src = Join-Path $qtBinDir $dll
+            $dst = Join-Path $appDir $dll
+            if (Test-Path $src) {
+                Copy-Item $src $dst -Force
+                Write-Host "  Copied $dll"
+            } else {
+                Write-Warning "  Not found: $dll"
             }
         }
-
-        # 4. Проверяем, что platform plugin скопировался
-        $platformDll = Join-Path (Split-Path $appPath -Parent) "platforms\qwindows.dll"
-        if (Test-Path $platformDll) {
-            Write-Host "✅ Platform plugin copied successfully"
-        } else {
-            Write-Warning "Platform plugin not found at: $platformDll"
-            # Вручную копируем platforms папку
-            $srcPlatforms = Join-Path $qtPluginDir "platforms"
-            $dstPlatforms = Join-Path (Split-Path $appPath -Parent) "platforms"
-            if (Test-Path $srcPlatforms) {
-                Copy-Item -Path $srcPlatforms -Destination $dstPlatforms -Recurse -Force
-                Write-Host "✅ Manually copied platforms folder"
-            }
-        }
-
-        # 5. Копирование runtime библиотек MinGW
-        Write-Host "Copying MinGW runtime libraries..."
         
+        # 3. Копируем runtime библиотеки MinGW
+        Write-Host "Copying MinGW runtime..."
         $mingwRuntime = @(
             "libgcc_s_seh-1.dll",
             "libstdc++-6.dll",
             "libwinpthread-1.dll"
         )
-
+        
         foreach ($dll in $mingwRuntime) {
             $src = Join-Path $qtBinDir $dll
-            $dst = Join-Path (Split-Path $appPath -Parent) $dll
+            $dst = Join-Path $appDir $dll
             if (Test-Path $src) {
                 Copy-Item $src $dst -Force
-                Write-Host "✅ Copied $dll"
+                Write-Host "  Copied $dll"
             } else {
-                Write-Warning "MinGW runtime $dll not found in $qtBinDir"
+                Write-Warning "  Not found: $dll"
             }
         }
-
-        # 6. Копируем стили (если нужны)
-        $srcStyles = Join-Path $qtPluginDir "styles"
-        $dstStyles = Join-Path (Split-Path $appPath -Parent) "styles"
-        if (Test-Path $srcStyles) {
-            Copy-Item -Path $srcStyles -Destination $dstStyles -Recurse -Force
-            Write-Host "✅ Copied styles"
+        
+        # 4. Копируем платформенный плагин (обязательно!)
+        Write-Host "Copying platform plugin..."
+        $srcPlatforms = Join-Path $qtPluginDir "platforms"
+        $dstPlatforms = Join-Path $appDir "platforms"
+        
+        if (Test-Path $srcPlatforms) {
+            New-Item -ItemType Directory -Force -Path $dstPlatforms | Out-Null
+            Copy-Item "$srcPlatforms\qwindows.dll" "$dstPlatforms\" -Force
+            Write-Host "  Copied platforms/qwindows.dll"
+        } else {
+            Write-Error "Platforms plugin not found at: $srcPlatforms"
+            exit 1
         }
-
-        Write-Host "✅ Deployment completed successfully."
+        
+        # 5. Копируем стили (опционально, но рекомендуется)
+        Write-Host "Copying styles..."
+        $srcStyles = Join-Path $qtPluginDir "styles"
+        $dstStyles = Join-Path $appDir "styles"
+        
+        if (Test-Path $srcStyles) {
+            New-Item -ItemType Directory -Force -Path $dstStyles | Out-Null
+            Copy-Item "$srcStyles\qwindowsvistastyle.dll" "$dstStyles\" -Force -ErrorAction SilentlyContinue
+            Write-Host "  Copied styles"
+        }
+        
+        # 6. Копируем imageformats (для поддержки изображений)
+        Write-Host "Copying image formats..."
+        $srcImageFormats = Join-Path $qtPluginDir "imageformats"
+        $dstImageFormats = Join-Path $appDir "imageformats"
+        
+        if (Test-Path $srcImageFormats) {
+            New-Item -ItemType Directory -Force -Path $dstImageFormats | Out-Null
+            Copy-Item "$srcImageFormats\*" "$dstImageFormats\" -Force
+            Write-Host "  Copied imageformats"
+        }
+        
+        # 7. Копируем iconengines (для иконок)
+        Write-Host "Copying icon engines..."
+        $srcIconEngines = Join-Path $qtPluginDir "iconengines"
+        $dstIconEngines = Join-Path $appDir "iconengines"
+        
+        if (Test-Path $srcIconEngines) {
+            New-Item -ItemType Directory -Force -Path $dstIconEngines | Out-Null
+            Copy-Item "$srcIconEngines\*" "$dstIconEngines\" -Force
+            Write-Host "  Copied iconengines"
+        }
+        
+        Write-Host "✅ Manual deployment completed successfully!"
+        
+        # 8. Проверка - запускаем приложение чтобы убедиться
+        Write-Host "Testing application..."
+        try {
+            $process = Start-Process -FilePath $appPath -NoNewWindow -PassThru -ErrorAction Stop
+            Start-Sleep -Seconds 2
+            if (-not $process.HasExited) {
+                Stop-Process -Id $process.Id -Force
+                Write-Host "✅ Application started successfully!"
+            }
+        } catch {
+            Write-Warning "Could not test application: $_"
+        }
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
