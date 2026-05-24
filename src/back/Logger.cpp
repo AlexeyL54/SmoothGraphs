@@ -110,6 +110,7 @@ int Logger::saveToFile(const QString &path, STATUS minStatus) {
       count++;
     }
   }
+  file.close();
 
   return count;
 }

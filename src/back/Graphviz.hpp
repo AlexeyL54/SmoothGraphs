@@ -2,8 +2,8 @@
 #pragma once
 
 #include "../front/Figures.hpp"
+#include "qobject.h"
 
-#include <fstream>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -29,7 +29,7 @@ public:
    * @param edges Вектор рёбер графа.
    * @return true если сохранение прошло успешно, false в противном случае.
    */
-  bool saveToFile(const std::string &filename,
+  bool saveToFile(const QString &filename,
                   const std::vector<SmoothNode *> &nodes,
                   const std::vector<SmoothEdge *> &edges);
 
@@ -40,7 +40,7 @@ public:
    * @param edges Выходной параметр: вектор рёбер (from, to, weight).
    * @return true если загрузка прошла успешно, false в противном случае.
    */
-  bool loadFromFile(const std::string &filename,
+  bool loadFromFile(const QString &filename,
                     std::vector<std::tuple<size_t, double, double>> &nodes,
                     std::vector<std::tuple<size_t, size_t, float>> &edges);
 
@@ -57,12 +57,12 @@ private:
    * @param out Выходной поток.
    * @param nodes Вектор узлов.
    */
-  void saveNodes(std::ofstream &out, const std::vector<SmoothNode *> &nodes);
+  void saveNodes(QTextStream &out, const std::vector<SmoothNode *> &nodes);
 
   /**
    * @brief Сохраняет информацию о рёбрах в DOT формате.
    * @param out Выходной поток.
    * @param edges Вектор рёбер.
    */
-  void saveEdges(std::ofstream &out, const std::vector<SmoothEdge *> &edges);
+  void saveEdges(QTextStream &out, const std::vector<SmoothEdge *> &edges);
 };

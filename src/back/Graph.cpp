@@ -315,22 +315,22 @@ void Graph::createEdgesFromData(
  * @param filepath Путь к файлу для сохранения.
  * @return true если сохранение успешно, false в противном случае.
  */
-bool Graph::saveToFile(const std::string &filepath) {
+bool Graph::saveToFile(const QString &filepath) {
   Graphviz gv;
   bool success = gv.saveToFile(filepath, getNodes(), getEdges());
 
   if (success) {
     currentFilePath_ = filepath;
     isModified_ = false;
-    qDebug() << "Graph saved to:" << filepath.c_str();
+    qDebug() << "Graph saved to:" << filepath;
   } else {
-    qDebug() << "Failed to save graph to:" << filepath.c_str();
+    qDebug() << "Failed to save graph to:" << filepath;
   }
 
   return success;
 }
 
-bool Graph::parseFile(const std::string &filepath, std::vector<NodeData> &nodes,
+bool Graph::parseFile(const QString &filepath, std::vector<NodeData> &nodes,
                       std::vector<EdgeData> &edges) {
   Graphviz gv;
 

@@ -490,13 +490,11 @@ void MainWindow::showNotification(const QString &message, bool isError) {
 }
 
 bool MainWindow::saveGraphToFile(const QString &filepath) {
-  std::string stdPath = filepath.toUtf8().toStdString();
-
   QGraphicsScene *scene = graphView_->scene();
   if (!scene)
     return false;
 
-  bool success = graph_->saveToFile(stdPath);
+  bool success = graph_->saveToFile(filepath);
   if (success) {
     showNotification(
         QString("Граф успешно сохранён в файл:\n%1").arg(filepath));
@@ -531,8 +529,6 @@ bool MainWindow::saveGraphToFile(const QString &filepath) {
 // MainWindow.cpp
 
 bool MainWindow::loadGraphFromFile(const QString &filepath) {
-  std::string stdPath = filepath.toUtf8().toStdString();
-
   // 1. Очищаем текущее состояние
   if (graphView_) {
     graphView_->clearScene(); // Это удалит старые элементы визуально
@@ -543,7 +539,7 @@ bool MainWindow::loadGraphFromFile(const QString &filepath) {
   std::vector<Graph::NodeData> nodesData;
   std::vector<Graph::EdgeData> edgesData;
 
-  if (!graph_->parseFile(stdPath, nodesData, edgesData)) {
+  if (!graph_->parseFile(filepath, nodesData, edgesData)) {
     showNotification("Ошибка при чтении файла!", true);
     return false;
   }
@@ -667,8 +663,8 @@ void MainWindow::findAndVisualizePath() {
 void MainWindow::onSaveGraph() {
   QString filepath;
 
-  if (!graph_->getCurrentFilePath().empty()) {
-    saveGraphToFile(QString::fromStdString(graph_->getCurrentFilePath()));
+  if (!graph_->getCurrentFilePath().isEmpty()) {
+    saveGraphToFile(graph_->getCurrentFilePath());
     return;
   }
 
@@ -692,7 +688,7 @@ void MainWindow::onSaveGraph() {
 }
 
 void MainWindow::onOpenGraph() {
-  if (graph_->isModified() && !graph_->getCurrentFilePath().empty()) {
+  if (graph_->isModified() && !graph_->getCurrentFilePath().isEmpty()) {
     QMessageBox::StandardButton reply = QMessageBox::question(
         this, "Несохранённые изменения",
         "У вас есть несохранённые изменения. Открыть другой файл?",

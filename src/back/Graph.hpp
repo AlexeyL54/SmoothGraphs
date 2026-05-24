@@ -87,7 +87,7 @@ public:
    * @param filepath Путь к файлу для сохранения.
    * @return true если сохранение успешно, false в противном случае.
    */
-  bool saveToFile(const std::string &filepath);
+  bool saveToFile(const QString &filepath);
 
   /**
    * @brief Загружает граф из файла.
@@ -102,22 +102,20 @@ public:
    *
    * Не создает визуальные элементы.
    */
-  bool parseFile(const std::string &filepath, std::vector<NodeData> &nodes,
+  bool parseFile(const QString &filepath, std::vector<NodeData> &nodes,
                  std::vector<EdgeData> &edges);
 
   /**
    * @brief Устанавливает путь к текущему файлу графа.
    * @param filepath Путь к файлу.
    */
-  void setCurrentFilePath(const std::string &filepath) {
-    currentFilePath_ = filepath;
-  }
+  void setCurrentFilePath(QString &filepath) { currentFilePath_ = filepath; }
 
   /**
    * @brief Возвращает путь к текущему файлу графа.
    * @return Путь к файлу.
    */
-  std::string getCurrentFilePath() const { return currentFilePath_; }
+  QString getCurrentFilePath() const { return currentFilePath_; }
 
   /**
    * @brief Устанавливает флаг модификации графа.
@@ -163,7 +161,7 @@ public:
 private:
   std::unordered_map<ID, SmoothNode *> nodes_;    // Узлы графа
   std::unordered_map<ID, std::list<ID>> adjList_; // Список смежности
-  std::string currentFilePath_;                   // Путь к текущему файлу
+  QString currentFilePath_;                       // Путь к текущему файлу
   bool isModified_;                               // Флаг модификации
   ID nextNodeId_;                                 // Следующий доступный ID
   Logger *logger_;                                // Логгер для поиска пути
