@@ -115,32 +115,33 @@ jobs:
     - name: Deploy Qt DLLs (windeployqt)
       shell: pwsh
       run: |
-        # Находим windeployqt.exe в PATH (добавляется установщиком Qt для MinGW)
+        # 1. Находим windeployqt.exe
         $winDeployQt = Get-Command windeployqt.exe -ErrorAction SilentlyContinue
 
         if (-not $winDeployQt) {
-            # Если не в PATH, пробуем стандартный путь установки
-            $qtBinPath = "C:\Qt\6.5.0\mingw_64\bin"
-            if (Test-Path "$qtBinPath\windeployqt.exe") {
-                $winDeployQt = "$qtBinPath\windeployqt.exe"
-            } else {
-                # Поиск в директории workspace
-                $searchPath = "${{ github.workspace }}/Qt"
-                $found = Get-ChildItem -Path $searchPath -Filter "windeployqt.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
-                if ($found) {
-                    $winDeployQt = $found.FullName
-                }
-            }
-        } else {
-            $winDeployQt = $winDeployQt.Source
-        }
-
-        if (-not (Test-Path $winDeployQt)) {
-            Write-Error "❌ windeployqt.exe not found!"
+            Write-Error "❌ windeployqt.exe not found in PATH"
             exit 1
         }
+        
+        $winDeployQtPath = $winDeployQt.Source
+        Write-Host "Using windeployqt from: $winDeployQtPath"
 
-        Write-Host "Using windeployqt from: $winDeployQt"
+        # Определяем корень Qt (поднимаемся на два уровня вверх от bin)
+        # Путь вида: .../Qt/Qt/6.5.0/mingw_64/bin/windeployqt.exe
+        $qtBinDir = Split-Path $winDeployQtPath -Parent
+        $qtRoot = Split-Path (Split-Path $qtBinDir -Parent) -Parent
+        
+        # Путь к плагинам
+        $pluginDir = Join-Path $qtBinDir "plugins"
+        
+        Write-Host "Qt Root: $qtRoot"
+        Write-Host "Qt Bin Dir: $qtBinDir"
+        Write-Host "Plugin Dir: $pluginDir"
+
+        if (-not (Test-Path $pluginDir)) {
+            Write-Error "❌ Plugins directory not found at: $pluginDir"
+            exit 1
+        }
 
         $appPath = "${{ github.workspace }}\install\bin\SmoothGraphs.exe"
 
@@ -149,14 +150,31 @@ jobs:
             exit 1
         }
 
-        Write-Host "Running windeployqt..."
-        & $winDeployQt --release --no-compiler-runtime --no-opengl-sw --no-translations "$appPath"
+        Write-Host "Running windeployqt with explicit paths..."
+        
+        # Запускаем с явным указанием путей к бинарникам и плагинам
+        & $winDeployQtPath `
+            --qt-bin-dir "$qtBinDir" `
+            --plugin-dir "$pluginDir" `
+            --release `
+            --no-compiler-runtime `
+            --no-opengl-sw `
+            --no-translations `
+            "$appPath"
 
         if ($LASTEXITCODE -ne 0) {
             Write-Error "❌ windeployqt failed with exit code $LASTEXITCODE"
             exit 1
         }
+        
         Write-Host "✅ Qt dependencies deployed."
+        
+        # Копируем папку platforms вручную на всякий случай, если windeployqt её пропустил
+        $destPlatforms = Join-Path (Split-Path $appPath -Parent) "platforms"
+        if (Test-Path $destPlatforms) {
+             Copy-Item -Path "$pluginDir\platforms\*" -Destination $destPlatforms -Force -Recurse
+             Write-Host "✅ Platforms plugin verified."
+        }
 
     - name: Copy MinGW runtime DLLs
       shell: pwsh
