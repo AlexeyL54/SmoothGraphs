@@ -10,11 +10,17 @@
  * @brief Конструктор класса Graph.
  */
 Graph::Graph(Logger *logger)
-    : isModified_(false), nextNodeId_(1), logger_(logger) {}
+    : isModified_(false), nextNodeId_(1), logger_(logger), revision_(0) {}
 /**
  * @brief Деструктор класса Graph.
  */
 Graph::~Graph() { clear(); }
+
+void Graph::notifyChange() {
+  revision_++;
+  isModified_ = true;
+  emit graphStructureChanged();
+}
 
 /**
  * @brief Добавляет узел в граф.
@@ -36,6 +42,7 @@ ID Graph::addNode(SmoothNode *node) {
   node->setId(id);
   isModified_ = true;
   qDebug() << "Node added to graph with ID:" << id;
+  notifyChange();
   return id;
 }
 
@@ -70,8 +77,8 @@ void Graph::addEdge(SmoothEdge *edge) {
   }
 
   adjList_[from].push_back(to);
-  // edgeWeights_[from][to] = edge->getWeight();
   isModified_ = true;
+  notifyChange();
   qDebug() << "Edge added to graph:" << from << "->" << to;
 }
 
@@ -113,11 +120,8 @@ void Graph::deleteNode(ID id) {
     neighbours.remove(id);
   }
 
-  /*for (auto &[from, toMap] : edgeWeights_) {
-    toMap.erase(id);
-  }*/
-
   isModified_ = true;
+  notifyChange();
   qDebug() << "Node deleted from graph:" << id;
 }
 
@@ -130,8 +134,8 @@ void Graph::deleteEdge(ID from, ID to) {
   auto iter = std::find(adjList_[from].begin(), adjList_[from].end(), to);
   if (iter != adjList_[from].end()) {
     adjList_[from].erase(iter);
-    // edgeWeights_[from].erase(to);
     isModified_ = true;
+    notifyChange();
     qDebug() << "Edge deleted from graph:" << from << "->" << to;
   } else {
     qDebug() << "Edge not found:" << from << "->" << to;
@@ -144,10 +148,10 @@ void Graph::deleteEdge(ID from, ID to) {
 void Graph::clear() {
   nodes_.clear();
   adjList_.clear();
-  // edgeWeights_.clear();
   currentFilePath_.clear();
   isModified_ = false;
   nextNodeId_ = 1;
+  notifyChange();
   qDebug() << "Graph cleared";
 }
 
@@ -303,13 +307,34 @@ bool Graph::saveToFile(const std::string &filepath) {
   return success;
 }
 
+bool Graph::parseFile(const std::string &filepath, std::vector<NodeData> &nodes,
+                      std::vector<EdgeData> &edges) {
+  Graphviz gv;
+
+  std::vector<std::tuple<ID, double, double>> nodesData;
+  std::vector<std::tuple<ID, ID, float>> edgesData;
+
+  if (!gv.loadFromFile(filepath, nodesData, edgesData)) {
+    return false;
+  }
+
+  for (const auto &n : nodesData) {
+    nodes.push_back({std::get<0>(n), std::get<1>(n), std::get<2>(n)});
+  }
+  for (const auto &e : edgesData) {
+    edges.push_back({std::get<0>(e), std::get<1>(e), std::get<2>(e)});
+  }
+
+  return true;
+}
+
 /**
  * @brief Загружает граф из файла.
  * @param filepath Путь к файлу для загрузки.
  * @param scene Сцена QGraphicsScene для отрисовки узлов и рёбер.
  * @return true если загрузка успешна, false в противном случае.
  */
-bool Graph::loadFromFile(const std::string &filepath, QGraphicsScene *scene) {
+/*bool Graph::loadFromFile(const std::string &filepath, QGraphicsScene *scene) {
   Graphviz gv;
   std::vector<std::tuple<ID, double, double>> nodesData;
   std::vector<std::tuple<ID, ID, float>> edgesData;
@@ -332,9 +357,10 @@ bool Graph::loadFromFile(const std::string &filepath, QGraphicsScene *scene) {
   currentFilePath_ = filepath;
   isModified_ = false;
 
+  notifyChange();
   qDebug() << "Graph loaded from:" << filepath.c_str();
   return true;
-}
+}*/
 
 // Вспомогательная функция для топологической сортировки (DFS)
 static void topologicalSortUtil(SmoothNode *node,

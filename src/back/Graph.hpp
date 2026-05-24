@@ -2,9 +2,12 @@
 
 #include "../front/Figures.hpp"
 #include "Logger.hpp"
+#include "qobject.h"
+#include "qtmetamacros.h"
 
 #include <QGraphicsScene>
 #include <QList>
+#include <QObject>
 #include <cstddef>
 #include <list>
 #include <string>
@@ -23,8 +26,21 @@ typedef size_t ID;
  * - Поиска кратчайшего пути
  * - Управления модификациями и текущим файлом
  */
-class Graph {
+class Graph : public QObject {
+  Q_OBJECT
 public:
+  struct NodeData {
+    ID id;
+    double x;
+    double y;
+  };
+
+  struct EdgeData {
+    ID from;
+    ID to;
+    float weight;
+  };
+
   /**
    * @brief Конструктор класса Graph.
    */
@@ -79,7 +95,15 @@ public:
    * @param scene Сцена QGraphicsScene для отрисовки узлов и рёбер.
    * @return true если загрузка успешна, false в противном случае.
    */
-  bool loadFromFile(const std::string &filepath, QGraphicsScene *scene);
+  // bool loadFromFile(const std::string &filepath, QGraphicsScene *scene);
+
+  /**
+   * @brief Парсит файл и возвращает данные графа.
+   *
+   * Не создает визуальные элементы.
+   */
+  bool parseFile(const std::string &filepath, std::vector<NodeData> &nodes,
+                 std::vector<EdgeData> &edges);
 
   /**
    * @brief Устанавливает путь к текущему файлу графа.
@@ -134,6 +158,8 @@ public:
    */
   std::vector<SmoothNode *> findShortestPath(SmoothNode *from, SmoothNode *to);
 
+  unsigned long long getRevision() { return revision_; }
+
 private:
   std::unordered_map<ID, SmoothNode *> nodes_;    // Узлы графа
   std::unordered_map<ID, std::list<ID>> adjList_; // Список смежности
@@ -146,6 +172,8 @@ private:
     float bellmanValue;
     SmoothNode *nextBestNode;
   };
+
+  unsigned long long revision_;
 
   /**
    * @brief Создаёт узлы на сцене из загруженных данных.
@@ -167,4 +195,9 @@ private:
   createEdgesFromData(const std::vector<std::tuple<ID, ID, float>> &edgesData,
                       const std::unordered_map<ID, SmoothNode *> &idToNode,
                       QGraphicsScene *scene);
+
+  void notifyChange();
+
+signals:
+  void graphStructureChanged();
 };

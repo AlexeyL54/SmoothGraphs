@@ -14,7 +14,7 @@ GraphView::GraphView(QGraphicsScene *scene, QWidget *parent)
   setFocusPolicy(Qt::StrongFocus); // ДОБАВИТЬ для горячих клавиш
   setupNodeSelectionBridge();
   setupZoomButtons();
-  setupHelpButton(); // ДОБАВИТЬ
+  setupHelpButton();
 }
 
 void GraphView::setupZoomButtons() {
@@ -273,6 +273,9 @@ void GraphView::mousePressEvent(QMouseEvent *event) {
         }
 
         SmoothEdge *finalEdge = new SmoothEdge(tempStartNode_, endNode);
+        connect(finalEdge, &SmoothEdge::edgeAboutToBeDeleted, this,
+                [this](SmoothEdge *n) { emit edgeRemoved(n); });
+
         if (themeMng_) {
           finalEdge->updateThemeStyle(themeMng_->getThemeColors());
         }
@@ -314,6 +317,9 @@ void GraphView::mousePressEvent(QMouseEvent *event) {
 
 void GraphView::addFigure(const QPointF &pos) {
   SmoothNode *fig = new SmoothNode(pos.x(), pos.y(), 50);
+
+  connect(fig, &SmoothNode::nodeAboutToBeDeleted, this,
+          [this](SmoothNode *n) { emit nodeRemoved(n); });
 
   if (themeMng_) {
     fig->updateThemeStyle(themeMng_->getThemeColors());

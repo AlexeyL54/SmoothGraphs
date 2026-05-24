@@ -88,11 +88,17 @@ MainWindow::MainWindow(ThemeManager &themeMng, QWidget *parent)
           &MainWindow::onFindPath);
   connect(menuBar_->getStopBtn(), &QPushButton::clicked, this,
           &MainWindow::onStopPath);
-
   connect(themeMng_, &ThemeManager::themeChanged, this,
           &MainWindow::onThemeChanged);
+  connect(graph_, &Graph::graphStructureChanged, this,
+          &MainWindow::onGraphChanged);
 
   updateStyle();
+}
+
+void MainWindow::onGraphChanged() {
+  qDebug() << "Graph structure changed. Invalidating cached path data.";
+  hasValidPath_ = false;
 }
 
 /**
@@ -147,6 +153,22 @@ bool MainWindow::saveSolutionToFile(const QString &filepath) {
 }
 
 void MainWindow::onSaveSolution() {
+  // Было ли вообще найдено решение?
+  if (!hasValidPath_) {
+    showNotification("Нет актуального решения! Сначала выполните поиск пути.",
+                     true);
+    return;
+  }
+
+  // Не изменился ли граф с момента поиска?
+  if (graph_->getRevision() != lastValidPathRevision_) {
+    showNotification(
+        "Граф был изменен после последнего поиска пути.\n"
+        "Пожалуйста, выполните поиск пути заново перед сохранением решения.",
+        true);
+    return;
+  }
+
   QString filepath = QFileDialog::getSaveFileName(
       this, "Сохранить решение", QString(),
       "Text Files (*.txt);;Log Files (*.log);;All Files (*)");
@@ -473,7 +495,7 @@ bool MainWindow::saveGraphToFile(const QString &filepath) {
   return success;
 }
 
-bool MainWindow::loadGraphFromFile(const QString &filepath) {
+/*bool MainWindow::loadGraphFromFile(const QString &filepath) {
   std::string stdPath = filepath.toStdString();
 
   if (graphView_) {
@@ -492,6 +514,86 @@ bool MainWindow::loadGraphFromFile(const QString &filepath) {
   }
 
   return success;
+}*/
+
+// MainWindow.cpp
+
+bool MainWindow::loadGraphFromFile(const QString &filepath) {
+  std::string stdPath = filepath.toStdString();
+
+  // 1. Очищаем текущее состояние
+  if (graphView_) {
+    graphView_->clearScene(); // Это удалит старые элементы визуально
+  }
+  graph_->clear(); // Это очистит внутренние данные Graph (nodes_, adjList_)
+
+  // 2. Парсим файл (только данные)
+  std::vector<Graph::NodeData> nodesData;
+  std::vector<Graph::EdgeData> edgesData;
+
+  if (!graph_->parseFile(stdPath, nodesData, edgesData)) {
+    showNotification("Ошибка при чтении файла!", true);
+    return false;
+  }
+
+  // 3. Создаем Узлы (UI + Model)
+  std::unordered_map<ID, SmoothNode *> createdNodes;
+  QGraphicsScene *scene = graphView_->scene();
+
+  for (const auto &ndata : nodesData) {
+    // Создаем визуальный объект
+    SmoothNode *node = new SmoothNode(ndata.x, ndata.y, 50);
+    node->setId(ndata.id);
+
+    // Подключаем сигналы удаления ДО добавления в Graph/Scene
+    connect(node, &SmoothNode::nodeAboutToBeDeleted, graphView_,
+            [this](SmoothNode *n) { emit graphView_->nodeRemoved(n); });
+
+    // Добавляем в сцену
+    scene->addItem(node);
+
+    // Регистрируем в модели Graph
+    graph_->addNode(node);
+
+    createdNodes[ndata.id] = node;
+  }
+
+  // 4. Создаем Ребра (UI + Model)
+  for (const auto &edata : edgesData) {
+    auto itFrom = createdNodes.find(edata.from);
+    auto itTo = createdNodes.find(edata.to);
+
+    if (itFrom != createdNodes.end() && itTo != createdNodes.end()) {
+      SmoothNode *start = itFrom->second;
+      SmoothNode *end = itTo->second;
+
+      SmoothEdge *edge = new SmoothEdge(start, end);
+      edge->setWeight(edata.weight);
+
+      // Подключаем сигналы удаления
+      connect(edge, &SmoothEdge::edgeAboutToBeDeleted, graphView_,
+              [this](SmoothEdge *e) { emit graphView_->edgeRemoved(e); });
+
+      // Добавляем в сцену
+      scene->addItem(edge);
+
+      // Обновляем позицию (нужно после addItem)
+      edge->updatePosition();
+
+      // Связываем узлы и ребро
+      start->addOutgoingEdge(edge);
+      end->addIncomingEdge(edge);
+
+      // Регистрируем в модели Graph
+      graph_->addEdge(edge);
+    }
+  }
+
+  // 5. Финализация
+  updateGraphColors();
+  showNotification(
+      QString("Граф успешно загружен из файла:\n%1").arg(filepath));
+  return true;
 }
 
 bool MainWindow::showCyrillicWarning(const QString filepath) {
@@ -532,8 +634,12 @@ void MainWindow::findAndVisualizePath() {
 
   if (path.size() <= 1) {
     showNotification("Путь между выбранными узлами не найден!", true);
+    hasValidPath_ = false;
     return;
   }
+
+  lastValidPathRevision_ = graph_->getRevision();
+  hasValidPath_ = true;
 
   graphView_->highlightPath(path);
   showNotification(

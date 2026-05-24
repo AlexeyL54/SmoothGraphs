@@ -10,6 +10,7 @@
 
 #include "Figures.hpp"
 #include "ThemeManager.hpp"
+#include "qtmetamacros.h"
 
 class GraphView : public QGraphicsView {
   Q_OBJECT

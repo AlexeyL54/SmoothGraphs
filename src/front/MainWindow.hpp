@@ -31,6 +31,9 @@ private:
   Graph *graph_;
   Logger logger_;
 
+  unsigned long long lastValidPathRevision_ = 0;
+  bool hasValidPath_ = false;
+
   QString generateGlobalStyleSheet() const;
   QString generateMenuBarStyleSheet() const;
   QString generateGraphViewStyleSheet() const;
@@ -52,4 +55,5 @@ private slots:
   void onOpenGraph();
   void onFindPath();
   void onStopPath();
+  void onGraphChanged();
 };

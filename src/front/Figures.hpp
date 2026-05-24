@@ -1,6 +1,8 @@
 #pragma once
 
+#include "qobject.h"
 #include "qpoint.h"
+#include "qtmetamacros.h"
 #include <QColor>
 #include <QGraphicsEllipseItem>
 #include <QGraphicsLineItem>
@@ -38,7 +40,8 @@ signals:
  * @class SmoothEdge
  * @brief Класс, представляющий ребро графа между двумя узлами.
  */
-class SmoothEdge : public QGraphicsLineItem {
+class SmoothEdge : public QObject, public QGraphicsLineItem {
+  Q_OBJECT
 public:
   SmoothEdge(SmoothNode *start, SmoothNode *end,
              QGraphicsItem *parent = nullptr);
@@ -75,13 +78,17 @@ private:
 
   mutable QPolygonF cachedArrowHead_;
   mutable QLineF cachedLine_;
+
+signals:
+  void edgeAboutToBeDeleted(SmoothEdge *self);
 };
 
 ///////////////////////////////////////////////////////////////////////////
 
 enum class NodeRole { Normal, Start, End };
 
-class SmoothNode : public QGraphicsEllipseItem {
+class SmoothNode : public QObject, public QGraphicsEllipseItem {
+  Q_OBJECT
 public:
   SmoothNode(qreal x, qreal y, qreal radius, QGraphicsItem *parent = nullptr);
 
@@ -141,4 +148,7 @@ private:
   void clearStart();
   void clearEnd();
   QGraphicsView *getParentView() const;
+
+signals:
+  void nodeAboutToBeDeleted(SmoothNode *self);
 };

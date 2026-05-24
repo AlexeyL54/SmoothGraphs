@@ -2,6 +2,7 @@
 #include "GraphView.hpp"
 #include "ThemeManager.hpp"
 #include "qaction.h"
+#include "qobject.h"
 
 #include <QApplication>
 #include <QDebug>
@@ -25,11 +26,11 @@
 
 SmoothEdge::SmoothEdge(SmoothNode *start, SmoothNode *end,
                        QGraphicsItem *parent)
-    : QGraphicsLineItem(parent), startNode_(start), endNode_(end),
+    : QObject(), QGraphicsLineItem(parent), startNode_(start), endNode_(end),
       weight_(1.0f) {
   setFlag(QGraphicsItem::ItemIsSelectable);
   updatePosition();
-  qDebug() << "Edge created between" << start << "and" << end;
+  qDebug() << "Edge created between" << start->getId() << "and" << end->getId();
 }
 
 SmoothEdge::~SmoothEdge() {
@@ -242,6 +243,7 @@ void SmoothEdge::contextMenuEvent(QGraphicsSceneContextMenuEvent *event) {
   QAction *weightAction = menu.addAction("Изменить вес");
 
   QObject::connect(deleteAction, &QAction::triggered, [this]() {
+    emit edgeAboutToBeDeleted(this);
     if (scene())
       scene()->removeItem(this);
   });
@@ -259,7 +261,8 @@ void SmoothEdge::contextMenuEvent(QGraphicsSceneContextMenuEvent *event) {
 
 SmoothNode::SmoothNode(qreal centerX, qreal centerY, qreal radius,
                        QGraphicsItem *parent)
-    : QGraphicsEllipseItem(0, 0, radius * 2, radius * 2, parent), id_(0) {
+    : QObject(), QGraphicsEllipseItem(0, 0, radius * 2, radius * 2, parent),
+      id_(0) {
 
   setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
   setAcceptHoverEvents(true);
@@ -410,6 +413,7 @@ void SmoothNode::contextMenuEvent(QGraphicsSceneContextMenuEvent *event) {
   QObject::connect(addEdgeAction, &QAction::triggered,
                    [this]() { this->addEdge(); });
   QObject::connect(deleteNodeAction, &QAction::triggered, [this]() {
+    emit nodeAboutToBeDeleted(this);
     for (SmoothEdge *edge : incomingEdges_) {
       if (scene())
         scene()->removeItem(edge);
