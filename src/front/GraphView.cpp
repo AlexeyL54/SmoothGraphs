@@ -349,7 +349,7 @@ void GraphView::clearScene() {
     SmoothEdge *edge = dynamic_cast<SmoothEdge *>(item);
     if (edge) {
       qDebug() << "Removing edge manually";
-      emit edgeRemoved(edge);
+      // emit edgeRemoved(edge);
 
       SmoothNode *start = edge->getStartNode();
       SmoothNode *end = edge->getEndNode();
@@ -369,7 +369,7 @@ void GraphView::clearScene() {
     SmoothNode *fig = dynamic_cast<SmoothNode *>(item);
     if (fig) {
       qDebug() << "Removing figure manually";
-      emit nodeRemoved(fig);
+      // emit nodeRemoved(fig);
 
       fig->clearIncomingEdges();
       fig->clearOutcomingEdges();
@@ -379,6 +379,7 @@ void GraphView::clearScene() {
   }
 
   scene_->clear();
+  emit sceneCleared();
 
   tempStartNode_ = nullptr;
   if (tempEdge_) {

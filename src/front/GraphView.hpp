@@ -42,6 +42,7 @@ signals:
   void startNodeChanged(SmoothNode *node);
   void endNodeChanged(SmoothNode *node);
   void findPathRequested();
+  void sceneCleared();
 
 protected:
   void contextMenuEvent(QContextMenuEvent *event) override;

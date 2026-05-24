@@ -92,6 +92,8 @@ MainWindow::MainWindow(ThemeManager &themeMng, QWidget *parent)
           &MainWindow::onThemeChanged);
   connect(graph_, &Graph::graphStructureChanged, this,
           &MainWindow::onGraphChanged);
+  connect(graphView_, &GraphView::sceneCleared, this,
+          [this]() { graph_->clear(); });
 
   updateStyle();
 }
