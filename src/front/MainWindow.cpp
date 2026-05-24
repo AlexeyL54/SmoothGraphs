@@ -490,7 +490,7 @@ void MainWindow::showNotification(const QString &message, bool isError) {
 }
 
 bool MainWindow::saveGraphToFile(const QString &filepath) {
-  std::string stdPath = filepath.toStdString();
+  std::string stdPath = filepath.toUtf8().toStdString();
 
   QGraphicsScene *scene = graphView_->scene();
   if (!scene)
@@ -531,7 +531,7 @@ bool MainWindow::saveGraphToFile(const QString &filepath) {
 // MainWindow.cpp
 
 bool MainWindow::loadGraphFromFile(const QString &filepath) {
-  std::string stdPath = filepath.toStdString();
+  std::string stdPath = filepath.toUtf8().toStdString();
 
   // 1. Очищаем текущее состояние
   if (graphView_) {
