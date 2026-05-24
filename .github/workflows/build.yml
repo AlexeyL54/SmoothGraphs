@@ -142,7 +142,8 @@ jobs:
         if (-not (Test-Path $qtPluginDir)) {
             Write-Error "❌ Plugins directory not found at: $qtPluginDir"
             # Отладка: показываем структуру папок
-            Write-Host "Contents of $qtMingwDir:"
+            $qtMingwDirPath = $qtMingwDir
+            Write-Host "Contents of $qtMingwDirPath :"
             Get-ChildItem -Path $qtMingwDir -Directory | Select-Object Name
             exit 1
         }
