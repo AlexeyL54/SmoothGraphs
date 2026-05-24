@@ -467,9 +467,9 @@ bool MainWindow::loadGraphFromFile(const QString &filepath) {
   bool success = graph_->loadFromFile(stdPath, scene);
 
   if (success) {
+    updateGraphColors();
     showNotification(
         QString("Граф успешно загружен из файла:\n%1").arg(filepath));
-    updateGraphColors();
   } else {
     showNotification("Ошибка при загрузке графа!", true);
   }

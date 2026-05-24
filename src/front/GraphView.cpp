@@ -74,7 +74,7 @@ void GraphView::setupHelpButton() {
   helpBtn_->raise();
 }
 
-void GraphView::showHelpDialog() { // ДОБАВИТЬ
+void GraphView::showHelpDialog() {
   QMessageBox *msgBox = new QMessageBox(this);
   msgBox->setWindowTitle("Справка - Редактор графов");
   msgBox->setTextFormat(Qt::RichText);
@@ -157,7 +157,7 @@ void GraphView::zoomOut() {
   }
 }
 
-void GraphView::keyPressEvent(QKeyEvent *event) { // ДОБАВИТЬ
+void GraphView::keyPressEvent(QKeyEvent *event) {
   if (event->modifiers() == Qt::ControlModifier) {
     if (event->key() == Qt::Key_Plus || event->key() == Qt::Key_Equal) {
       zoomIn();
