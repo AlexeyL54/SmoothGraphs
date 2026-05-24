@@ -8,7 +8,7 @@ set(CMAKE_AUTOUIC ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2 ")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
 
 set(SOURCES
     main.cpp
@@ -33,6 +33,10 @@ set(HEADERS
     src/back/Logger.hpp
 )
 
-  add_executable(SmoothGraphs ${SOURCES} ${HEADERS})
+if(WIN32)
+    set(APP_ICON_RESOURCE resources/app_icon.rc)
+endif()
 
-  target_link_libraries(SmoothGraphs Qt6::Core Qt6::Widgets)
+add_executable(SmoothGraphs ${SOURCES} ${HEADERS} ${APP_ICON_RESOURCE})
+
+target_link_libraries(SmoothGraphs Qt6::Core Qt6::Widgets)

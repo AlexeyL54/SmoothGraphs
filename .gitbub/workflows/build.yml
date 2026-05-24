@@ -1,0 +1,144 @@
+name: Build Windows
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    # Установка MSYS2 с MinGW-w64
+    - name: Setup MSYS2
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: UCRT64
+        update: true
+        install: >-
+          mingw-w64-ucrt-x86_64-cmake
+          mingw-w64-ucrt-x86_64-ninja
+          mingw-w64-ucrt-x86_64-gcc
+          mingw-w64-ucrt-x86_64-qt6
+
+    # Установка Qt (базовые компоненты)
+    - name: Setup Qt6
+      uses: jurplel/install-qt-action@v4
+      with:
+        version: '6.5.0'
+        host: 'windows'
+        target: 'desktop'
+        arch: 'win64_mingw'
+        install-deps: 'true'
+        dir: ${{ github.workspace }}/Qt
+
+    - name: Configure CMake
+      run: |
+        cmake -G "MinGW Makefiles" `
+          -DCMAKE_BUILD_TYPE=Release `
+          -DCMAKE_INSTALL_PREFIX="${{ github.workspace }}/install" `
+          -S . -B build
+
+    - name: Build
+      run: |
+        cmake --build build --config Release --parallel
+
+    - name: Install
+      run: |
+        cmake --install build --config Release
+
+    - name: Copy application icon
+      shell: pwsh
+      run: |
+        $iconSource = "${{ github.workspace }}/resources/graph.ico"
+        $iconDest = "${{ github.workspace }}/install/bin/graph.ico"
+
+        if (Test-Path $iconSource) {
+            Copy-Item $iconSource $iconDest
+            Write-Host "✅ Icon copied to: $iconDest"
+        } else {
+            Write-Warning "⚠️ Icon not found at: $iconSource"
+        }
+
+    - name: Deploy Qt DLLs (windeployqt)
+      shell: pwsh
+      run: |
+        # Находим windeployqt.exe в PATH (добавляется установщиком Qt для MinGW)
+        $winDeployQt = Get-Command windeployqt.exe -ErrorAction SilentlyContinue
+
+        if (-not $winDeployQt) {
+            # Если не в PATH, пробуем стандартный путь установки
+            $qtBinPath = "C:\Qt\6.5.0\mingw_64\bin"
+            if (Test-Path "$qtBinPath\windeployqt.exe") {
+                $winDeployQt = "$qtBinPath\windeployqt.exe"
+            } else {
+                # Поиск в директории workspace
+                $searchPath = "${{ github.workspace }}/Qt"
+                $found = Get-ChildItem -Path $searchPath -Filter "windeployqt.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+                if ($found) {
+                    $winDeployQt = $found.FullName
+                }
+            }
+        } else {
+            $winDeployQt = $winDeployQt.Source
+        }
+
+        if (-not (Test-Path $winDeployQt)) {
+            Write-Error "❌ windeployqt.exe not found!"
+            exit 1
+        }
+
+        Write-Host "Using windeployqt from: $winDeployQt"
+
+        $appPath = "${{ github.workspace }}\install\bin\SmoothGraphs.exe"
+
+        if (-not (Test-Path $appPath)) {
+            Write-Error "❌ Application executable not found at: $appPath"
+            exit 1
+        }
+
+        Write-Host "Running windeployqt..."
+        & $winDeployQt --release --no-compiler-runtime --no-opengl-sw --no-translations "$appPath"
+
+        if ($LASTEXITCODE -ne 0) {
+            Write-Error "❌ windeployqt failed with exit code $LASTEXITCODE"
+            exit 1
+        }
+        Write-Host "✅ Qt dependencies deployed."
+
+    - name: Copy MinGW runtime DLLs
+      shell: pwsh
+      run: |
+        # Копируем необходимые runtime DLL от MinGW
+        $mingwBinDir = "C:\msys64\ucrt64\bin"
+        $installBinDir = "${{ github.workspace }}\install\bin"
+
+        $requiredDlls = @(
+            "libgcc_s_seh-1.dll",
+            "libstdc++-6.dll",
+            "libwinpthread-1.dll"
+        )
+
+        foreach ($dll in $requiredDlls) {
+            $src = Join-Path $mingwBinDir $dll
+            $dst = Join-Path $installBinDir $dll
+
+            if (Test-Path $src) {
+                Copy-Item $src $dst
+                Write-Host "✅ Copied: $dll"
+            } else {
+                Write-Warning "⚠️ Not found: $dll"
+            }
+        }
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: SmoothGraphs-Windows-x64
+        path: install/
+        retention-days: 30
