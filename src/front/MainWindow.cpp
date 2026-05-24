@@ -95,6 +95,23 @@ MainWindow::MainWindow(ThemeManager &themeMng, QWidget *parent)
   updateStyle();
 }
 
+/**
+ * @brief Проверяет наличие кириллических символов в строке.
+ * @param text Проверяемая строка.
+ * @return true, если строка содержит символы кириллицы.
+ */
+bool containsCyrillic(const QString &text) {
+  for (const QChar &ch : text) {
+    const ushort code = ch.unicode();
+    // Основной диапазон кириллицы + буквы Ё/ё
+    if ((code >= 0x0400 && code <= 0x04FF) || code == 0x0401 ||
+        code == 0x0451) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void MainWindow::resizeEvent(QResizeEvent *event) {
   QWidget::resizeEvent(event);
   if (graphView_) {
@@ -477,6 +494,17 @@ bool MainWindow::loadGraphFromFile(const QString &filepath) {
   return success;
 }
 
+bool MainWindow::showCyrillicWarning(const QString filepath) {
+  if (containsCyrillic(filepath)) {
+    QMessageBox::warning(
+        this, "Предупреждение",
+        "Путь к директории содержит кириллические символы:\n" + filepath +
+            "\n\nЭто может вызвать проблемы с сохранением файлов.");
+    return true;
+  }
+  return false;
+}
+
 void MainWindow::findAndVisualizePath() {
   SmoothNode *startNode = graphView_->getStartNode();
   SmoothNode *endNode = graphView_->getEndNode();
@@ -523,6 +551,9 @@ void MainWindow::onSaveGraph() {
   filepath = QFileDialog::getSaveFileName(this, "Сохранить граф", QString(),
                                           "Graph Files (*.gphz)");
 
+  if (showCyrillicWarning(filepath))
+    return;
+
   if (!filepath.isEmpty()) {
     if (!filepath.endsWith(".gphz", Qt::CaseInsensitive)) {
       filepath += ".gphz";
@@ -545,6 +576,9 @@ void MainWindow::onOpenGraph() {
 
   QString filepath = QFileDialog::getOpenFileName(
       this, "Открыть граф", QString(), "Graph Files (*.gphz)");
+
+  if (showCyrillicWarning(filepath))
+    return;
 
   if (!filepath.isEmpty()) {
     loadGraphFromFile(filepath);

@@ -40,6 +40,7 @@ private:
   bool loadGraphFromFile(const QString &filepath);
   void findAndVisualizePath();
   bool saveSolutionToFile(const QString &filepath);
+  bool showCyrillicWarning(const QString filepath);
 
 protected:
   void resizeEvent(QResizeEvent *event) override;
