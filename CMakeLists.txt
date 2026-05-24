@@ -35,8 +35,9 @@ set(HEADERS
 
 if(WIN32)
     set(APP_ICON_RESOURCE resources/app_icon.rc)
+    add_executable(SmoothGraphs WIN32 ${SOURCES} ${HEADERS} ${APP_ICON_RESOURCE})
+else()
+    add_executable(SmoothGraphs ${SOURCES} ${HEADERS})
 endif()
-
-add_executable(SmoothGraphs ${SOURCES} ${HEADERS} ${APP_ICON_RESOURCE})
 
 target_link_libraries(SmoothGraphs Qt6::Core Qt6::Widgets)
