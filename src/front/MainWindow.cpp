@@ -181,6 +181,9 @@ void MainWindow::onSaveSolution() {
       this, "Сохранить решение", path,
       "Text Files (*.txt);;Log Files (*.log);;All Files (*)");
 
+  if (showCyrillicWarning(filepath))
+    return;
+
   if (!filepath.isEmpty()) {
     if (!filepath.endsWith(".txt", Qt::CaseInsensitive) &&
         !filepath.endsWith(".log", Qt::CaseInsensitive)) {
@@ -609,15 +612,15 @@ bool MainWindow::showCyrillicWarning(const QString filepath) {
   if (containsCyrillic(filepath)) {
     QMessageBox::warning(
         this, "Предупреждение",
-        "Путь к директории содержит кириллические символы:\n" + filepath +
-            "\n\nЭто может вызвать проблемы с сохранением файлов.");
+        "Путь содержит кириллические символы:\n" + filepath +
+            "\n\nЭто может вызвать проблемы при работе с файлами.");
     return true;
   }
   return false;
 }
 
 void MainWindow::onLoopFound() {
-  QMessageBox::warning(this, "Обнаружен цикл!",
+  QMessageBox::warning(this, "Предупреждение",
                        "Перед поиском кратчайшего пути необхидимо убедиться, "
                        "что в графе отсутствуют циклы!");
 }
@@ -669,6 +672,10 @@ void MainWindow::onSaveGraph() {
     return;
   }
 
+  QString path = QDir::homePath();
+  if (!graphSaveFocusDir_.isEmpty())
+    path = graphSaveFocusDir_;
+
   filepath = QFileDialog::getSaveFileName(this, "Сохранить граф", QString(),
                                           "Graph Files (*.gphz)");
 
@@ -680,6 +687,7 @@ void MainWindow::onSaveGraph() {
       filepath += ".gphz";
     }
     saveGraphToFile(filepath);
+    graphSaveFocusDir_ = QFileInfo(filepath).absolutePath();
   }
 }
 
@@ -696,8 +704,8 @@ void MainWindow::onOpenGraph() {
   }
 
   QString path = QDir::homePath();
-  if (!graphFocusDir_.isEmpty())
-    path = graphFocusDir_;
+  if (!graphOpenFocusDir_.isEmpty())
+    path = graphOpenFocusDir_;
 
   QString filepath = QFileDialog::getOpenFileName(this, "Открыть граф", path,
                                                   "Graph Files (*.gphz)");
@@ -707,7 +715,7 @@ void MainWindow::onOpenGraph() {
 
   if (!filepath.isEmpty()) {
     loadGraphFromFile(filepath);
-    graphFocusDir_ = QFileInfo(filepath).absolutePath();
+    graphOpenFocusDir_ = QFileInfo(filepath).absolutePath();
   }
 }
 
