@@ -399,13 +399,13 @@ void SmoothNode::contextMenuEvent(QGraphicsSceneContextMenuEvent *event) {
   QAction *endAction = nullptr;
 
   if (role_ == NodeRole::Start) {
-    startAction = menu.addAction("Снять как стартовый");
+    startAction = menu.addAction("Задать как простой");
   } else {
     startAction = menu.addAction("Задать как стартовый");
   }
 
   if (role_ == NodeRole::End) {
-    endAction = menu.addAction("Снять как конечный");
+    endAction = menu.addAction("Задать как простой");
   } else {
     endAction = menu.addAction("Задать как конечный");
   }
