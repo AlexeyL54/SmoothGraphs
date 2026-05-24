@@ -126,13 +126,12 @@ jobs:
         Write-Host "Using windeployqt from: $winDeployQtPath"
 
         # 2. Определяем пути для структуры install-qt-action
-        # windeployqt лежит в: .../Qt/6.5.0/mingw_64/bin/windeployqt.exe
-        $qtBinDir = Split-Path $winDeployQtPath -Parent          # .../mingw_64/bin
-        $qtMingwDir = Split-Path $qtBinDir -Parent               # .../mingw_64
-        $qtVersionDir = Split-Path $qtMingwDir -Parent           # .../6.5.0
+        $qtBinDir = Split-Path $winDeployQtPath -Parent
+        $qtMingwDir = Split-Path $qtBinDir -Parent
+        $qtVersionDir = Split-Path $qtMingwDir -Parent
         
-        $qtPluginDir = Join-Path $qtMingwDir "plugins"           # .../mingw_64/plugins
-        $qtQmlDir = Join-Path $qtMingwDir "qml"                  # .../mingw_64/qml
+        $qtPluginDir = Join-Path $qtMingwDir "plugins"
+        $qtQmlDir = Join-Path $qtMingwDir "qml"
 
         Write-Host "Qt Version Dir: $qtVersionDir"
         Write-Host "Qt Mingw Dir: $qtMingwDir"
@@ -141,10 +140,6 @@ jobs:
 
         if (-not (Test-Path $qtPluginDir)) {
             Write-Error "❌ Plugins directory not found at: $qtPluginDir"
-            # Отладка: показываем структуру папок
-            $qtMingwDirPath = $qtMingwDir
-            Write-Host "Contents of $qtMingwDirPath :"
-            Get-ChildItem -Path $qtMingwDir -Directory | Select-Object Name
             exit 1
         }
 
@@ -156,23 +151,53 @@ jobs:
             exit 1
         }
 
-        # 3. Запуск windeployqt
+        # 3. Запуск windeployqt с явным указанием путей
         Write-Host "Running windeployqt..."
         
-        # Важно: set PATH чтобы windeployqt нашел свои DLL
+        # Добавляем bin Qt в PATH
         $env:PATH = "$qtBinDir;$env:PATH"
         
-        & $winDeployQtPath --release --no-compiler-runtime --no-opengl-sw --no-translations "$appPath"
+        # Основная команда с указанием всех необходимых путей
+        & $winDeployQtPath `
+            --release `
+            --no-compiler-runtime `
+            --no-opengl-sw `
+            --no-translations `
+            --dir "$($appPath | Split-Path)" `
+            --libdir "$($appPath | Split-Path)" `
+            --plugindir "$qtPluginDir" `
+            "$appPath"
 
         if ($LASTEXITCODE -ne 0) {
-            Write-Error "❌ windeployqt failed with exit code $LASTEXITCODE"
-            exit 1
+            Write-Host "First attempt failed, trying with explicit plugin path..."
+            
+            # Альтернативный способ: используем параметр --path для указания директории с плагинами
+            & $winDeployQtPath --release --no-compiler-runtime --no-translations --plugindir "$qtPluginDir" "$appPath"
+            
+            if ($LASTEXITCODE -ne 0) {
+                Write-Error "❌ windeployqt failed with exit code $LASTEXITCODE"
+                exit 1
+            }
         }
 
-        # 4. Копирование runtime библиотек MinGW
+        # 4. Проверяем, что platform plugin скопировался
+        $platformDll = Join-Path (Split-Path $appPath -Parent) "platforms\qwindows.dll"
+        if (Test-Path $platformDll) {
+            Write-Host "✅ Platform plugin copied successfully"
+        } else {
+            Write-Warning "Platform plugin not found at: $platformDll"
+            # Вручную копируем platforms папку
+            $srcPlatforms = Join-Path $qtPluginDir "platforms"
+            $dstPlatforms = Join-Path (Split-Path $appPath -Parent) "platforms"
+            if (Test-Path $srcPlatforms) {
+                Copy-Item -Path $srcPlatforms -Destination $dstPlatforms -Recurse -Force
+                Write-Host "✅ Manually copied platforms folder"
+            }
+        }
+
+        # 5. Копирование runtime библиотек MinGW
         Write-Host "Copying MinGW runtime libraries..."
         
-        # MinGW runtime лежат в папке mingw_64/bin (рядом с windeployqt)
         $mingwRuntime = @(
             "libgcc_s_seh-1.dll",
             "libstdc++-6.dll",
@@ -184,38 +209,21 @@ jobs:
             $dst = Join-Path (Split-Path $appPath -Parent) $dll
             if (Test-Path $src) {
                 Copy-Item $src $dst -Force
-                Write-Host "Copied $dll"
+                Write-Host "✅ Copied $dll"
             } else {
                 Write-Warning "MinGW runtime $dll not found in $qtBinDir"
             }
         }
 
-        Write-Host "✅ Deployment completed successfully."
-
-    - name: Copy MinGW runtime DLLs
-      shell: pwsh
-      run: |
-        # Копируем необходимые runtime DLL от MinGW
-        $mingwBinDir = "C:\msys64\ucrt64\bin"
-        $installBinDir = "${{ github.workspace }}\install\bin"
-
-        $requiredDlls = @(
-            "libgcc_s_seh-1.dll",
-            "libstdc++-6.dll",
-            "libwinpthread-1.dll"
-        )
-
-        foreach ($dll in $requiredDlls) {
-            $src = Join-Path $mingwBinDir $dll
-            $dst = Join-Path $installBinDir $dll
-
-            if (Test-Path $src) {
-                Copy-Item $src $dst
-                Write-Host "✅ Copied: $dll"
-            } else {
-                Write-Warning "⚠️ Not found: $dll"
-            }
+        # 6. Копируем стили (если нужны)
+        $srcStyles = Join-Path $qtPluginDir "styles"
+        $dstStyles = Join-Path (Split-Path $appPath -Parent) "styles"
+        if (Test-Path $srcStyles) {
+            Copy-Item -Path $srcStyles -Destination $dstStyles -Recurse -Force
+            Write-Host "✅ Copied styles"
         }
+
+        Write-Host "✅ Deployment completed successfully."
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
