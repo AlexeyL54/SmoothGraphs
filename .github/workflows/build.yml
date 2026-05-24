@@ -55,14 +55,22 @@ jobs:
     - name: Copy application icon
       shell: pwsh
       run: |
-        $iconSource = "${{ github.workspace }}/resources/graph.ico"
-        $iconDest = "${{ github.workspace }}/install/bin/graph.ico"
+        $iconSource = "${{ github.workspace }}\resources\graph.ico"
+        $iconDest = "${{ github.workspace }}\install\bin\graph.ico"
+
+        # Убеждаемся, что директория назначения существует
+        $destDir = Split-Path $iconDest -Parent
+        if (-not (Test-Path $destDir)) {
+            New-Item -ItemType Directory -Force -Path $destDir | Out-Null
+            Write-Host "Created directory: $destDir"
+        }
 
         if (Test-Path $iconSource) {
-            Copy-Item $iconSource $iconDest
+            Copy-Item $iconSource $iconDest -Force
             Write-Host "✅ Icon copied to: $iconDest"
         } else {
-            Write-Warning "⚠️ Icon not found at: $iconSource"
+            Write-Error "❌ Icon not found at: $iconSource"
+            exit 1
         }
 
     - name: Deploy Qt DLLs (windeployqt)
