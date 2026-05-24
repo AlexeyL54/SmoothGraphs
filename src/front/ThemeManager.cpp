@@ -1,7 +1,7 @@
 #include "ThemeManager.hpp"
 
 ThemeManager::ThemeManager(QObject *parent) : QObject(parent) {
-  setTheme(Dark);
+  setTheme(Light);
 };
 
 void ThemeManager::setTheme(Theme theme) {

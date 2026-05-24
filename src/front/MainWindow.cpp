@@ -181,8 +181,8 @@ void MainWindow::onSaveSolution() {
       this, "Сохранить решение", path,
       "Text Files (*.txt);;Log Files (*.log);;All Files (*)");
 
-  if (showCyrillicWarning(filepath))
-    return;
+  // if (showCyrillicWarning(filepath))
+  // return;
 
   if (!filepath.isEmpty()) {
     if (!filepath.endsWith(".txt", Qt::CaseInsensitive) &&
@@ -679,8 +679,8 @@ void MainWindow::onSaveGraph() {
   filepath = QFileDialog::getSaveFileName(this, "Сохранить граф", QString(),
                                           "Graph Files (*.gphz)");
 
-  if (showCyrillicWarning(filepath))
-    return;
+  // if (showCyrillicWarning(filepath))
+  // return;
 
   if (!filepath.isEmpty()) {
     if (!filepath.endsWith(".gphz", Qt::CaseInsensitive)) {
