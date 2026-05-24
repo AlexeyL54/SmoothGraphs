@@ -79,6 +79,6 @@ private:
   void showHelpDialog();
 
 private slots:
-  void addFigure();
+  void addFigure(const QPointF &pos);
   void setupNodeSelectionBridge();
 };

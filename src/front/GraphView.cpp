@@ -2,6 +2,7 @@
 #include "GraphView.hpp"
 #include "Figures.hpp"
 #include "HelpText.hpp"
+#include "qpoint.h"
 
 #include <QMenu>
 #include <QMessageBox>
@@ -186,8 +187,9 @@ void GraphView::contextMenuEvent(QContextMenuEvent *event) {
     QAction *addFigAction = menu.addAction("Добавить узел");
     QAction *clearAction = menu.addAction("Очистить все");
 
-    connect(addFigAction, &QAction::triggered, this, &GraphView::addFigure);
     connect(clearAction, &QAction::triggered, this, &GraphView::clearScene);
+    connect(addFigAction, &QAction::triggered, this,
+            [this, event]() { this->addFigure(mapToScene(event->pos())); });
 
     menu.exec(event->globalPos());
   } else {
@@ -310,8 +312,8 @@ void GraphView::mousePressEvent(QMouseEvent *event) {
   QGraphicsView::mousePressEvent(event);
 }
 
-void GraphView::addFigure() {
-  SmoothNode *fig = new SmoothNode(0, 0, 50);
+void GraphView::addFigure(const QPointF &pos) {
+  SmoothNode *fig = new SmoothNode(pos.x(), pos.y(), 50);
 
   if (themeMng_) {
     fig->updateThemeStyle(themeMng_->getThemeColors());
