@@ -200,4 +200,5 @@ private:
 
 signals:
   void graphStructureChanged();
+  void loopFound();
 };

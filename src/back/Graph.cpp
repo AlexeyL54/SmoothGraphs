@@ -385,11 +385,15 @@ bool Graph::parseFile(const std::string &filepath, std::vector<NodeData> &nodes,
   return true;
 }*/
 
-// Вспомогательная функция для топологической сортировки (DFS)
-static void topologicalSortUtil(SmoothNode *node,
-                                std::unordered_map<SmoothNode *, bool> &visited,
-                                std::vector<SmoothNode *> &stack,
-                                Logger *logger) {
+// Вспомогательная функция для топологической сортировки и проверки на
+// ацикличность Возвращает true, если цикл обнаружен
+static bool
+topologicalSortUtil(SmoothNode *node,
+                    std::unordered_map<SmoothNode *, int>
+                        &state, // 0: unvisited, 1: visiting, 2: visited
+                    std::vector<SmoothNode *> &stack, Logger *logger) {
+  state[node] = 1; // Mark as visiting
+
   if (logger) {
     logger->addMessage(
         INFO,
@@ -397,12 +401,24 @@ static void topologicalSortUtil(SmoothNode *node,
             .arg(node->getId()));
   }
 
-  visited[node] = true;
-
   // Рекурсивно посещаем всех соседей (исходящие ребра)
   for (SmoothEdge *edge : node->getOutcomingEdges()) {
     SmoothNode *neighbor = edge->getEndNode();
-    if (!visited[neighbor]) {
+
+    // Если сосед находится в состоянии "visiting", значит найден цикл
+    if (state[neighbor] == 1) {
+      if (logger) {
+        logger->addMessage(
+            ERROR, QString("Обнаружен цикл! Узел ID %1 ссылается на узел ID "
+                           "%2, который уже находится в стеке обработки.")
+                       .arg(node->getId())
+                       .arg(neighbor->getId()));
+      }
+      return true; // Cycle detected
+    }
+
+    // Если сосед еще не посещен, рекурсивно обрабатываем его
+    if (state[neighbor] == 0) {
       if (logger) {
         logger->addMessage(
             INFO, QString("  Переход по ребру: ID %1 -> ID %2 (вес: %3)")
@@ -410,49 +426,68 @@ static void topologicalSortUtil(SmoothNode *node,
                       .arg(neighbor->getId())
                       .arg(edge->getWeight()));
       }
-      topologicalSortUtil(neighbor, visited, stack, logger);
+
+      if (topologicalSortUtil(neighbor, state, stack, logger)) {
+        return true; // Propagate cycle detection
+      }
     }
   }
 
-  // Добавляем текущий узел в стек после обработки всех соседей
+  state[node] = 2; // Mark as visited
   stack.push_back(node);
+
   if (logger) {
     logger->addMessage(
         INFO,
         QString("Добавляем узел ID: %1 в стек (после обработки всех потомков)")
             .arg(node->getId()));
   }
+
+  return false; // No cycle found in this branch
 }
 
 // Получение топологически отсортированного списка узлов
+// Возвращает пустой вектор, если граф содержит циклы
 static std::vector<SmoothNode *>
 getTopologicalOrder(const std::vector<SmoothNode *> &allNodes, Logger *logger) {
-  std::unordered_map<SmoothNode *, bool> visited;
+  std::unordered_map<SmoothNode *, int>
+      state; // 0: unvisited, 1: visiting, 2: visited
   std::vector<SmoothNode *> stack;
 
   if (logger) {
-    logger->addMessage(
-        INFO, "Начинаем топологическую сортировку графа (алгоритм DFS)");
+    logger->addMessage(INFO, "Начинаем топологическую сортировку графа и "
+                             "проверку на ацикличность (алгоритм DFS)");
     logger->addMessage(INFO,
                        QString("Всего узлов в графе: %1").arg(allNodes.size()));
   }
 
   for (SmoothNode *node : allNodes) {
-    visited[node] = false;
+    state[node] = 0; // Initialize all nodes as unvisited
   }
 
   for (SmoothNode *node : allNodes) {
-    if (!visited[node]) {
+    if (state[node] == 0) {
       if (logger) {
         logger->addMessage(
             INFO, QString("Запускаем DFS с узла ID: %1").arg(node->getId()));
       }
-      topologicalSortUtil(node, visited, stack, logger);
+
+      // If cycle is detected, return empty vector
+      if (topologicalSortUtil(node, state, stack, logger)) {
+        if (logger) {
+          logger->addMessage(
+              ERROR,
+              "Граф содержит циклы. Топологическая сортировка невозможна.");
+        }
+        return {};
+      }
     }
   }
 
   if (logger) {
-    logger->addMessage(SUCCESS, "Топологическая сортировка завершена");
+    logger->addMessage(
+        SUCCESS,
+        "Топологическая сортировка завершена успешно (граф ациклический)");
     QString orderStr = "Порядок узлов (от стоков к источникам): ";
     for (SmoothNode *node : stack) {
       orderStr += QString::number(node->getId()) + " ";
@@ -507,6 +542,16 @@ std::vector<SmoothNode *> Graph::findShortestPath(SmoothNode *from,
     logger_->addMessage(INFO, "Проверка графа на ацикличность...");
   }
   std::vector<SmoothNode *> topoOrder = getTopologicalOrder(allNodes, logger_);
+  if (topoOrder.empty() && !allNodes.empty()) {
+    if (logger_) {
+      logger_->addMessage(ERROR,
+                          "Поиск пути прерван: Граф содержит циклы. Алгоритм "
+                          "применим только для ациклических графов (DAG).");
+      logger_->addMessage(INFO, "=== КОНЕЦ ПОИСКА (ОШИБКА: ЦИКЛ) ===");
+    }
+    emit loopFound();
+    return {};
+  }
 
   // 3. Инициализация структур данных для обратного прохода
   std::unordered_map<SmoothNode *, float> dist;

@@ -144,7 +144,7 @@ void SmoothEdge::paintWeight(QPainter *painter, const QLineF &line) {
 
   painter->setPen(QPen(textColor_, 1));
   painter->drawText(textRect, Qt::AlignCenter, weightText);
-  painter->restore();
+  // painter->restore();
 }
 
 QRectF SmoothEdge::boundingRect() const {

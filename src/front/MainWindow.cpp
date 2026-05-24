@@ -94,6 +94,7 @@ MainWindow::MainWindow(ThemeManager &themeMng, QWidget *parent)
           &MainWindow::onGraphChanged);
   connect(graphView_, &GraphView::sceneCleared, this,
           [this]() { graph_->clear(); });
+  connect(graph_, &Graph::loopFound, this, &MainWindow::onLoopFound);
 
   updateStyle();
 }
@@ -607,6 +608,12 @@ bool MainWindow::showCyrillicWarning(const QString filepath) {
     return true;
   }
   return false;
+}
+
+void MainWindow::onLoopFound() {
+  QMessageBox::warning(this, "Обнаружен цикл!",
+                       "Перед поиском кратчайшего пути необхидимо убедиться, "
+                       "что в графе отсутствуют циклы!");
 }
 
 void MainWindow::findAndVisualizePath() {

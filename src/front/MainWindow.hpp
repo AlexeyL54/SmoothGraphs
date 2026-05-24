@@ -56,4 +56,5 @@ private slots:
   void onFindPath();
   void onStopPath();
   void onGraphChanged();
+  void onLoopFound();
 };
