@@ -52,25 +52,64 @@ jobs:
       run: |
         cmake --install build --config Release
 
+    - name: Debug - Find Executable
+      shell: pwsh
+      run: |
+        Write-Host "=== Searching for .exe files ==="
+        Get-ChildItem -Recurse -Path build -Filter "*.exe" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "Build: $($_.FullName)" }
+        Get-ChildItem -Recurse -Path install -Filter "*.exe" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "Install: $($_.FullName)" }
+
+    - name: Prepare Executable for Deployment
+      shell: pwsh
+      run: |
+        $ws = "${{ github.workspace }}"
+        $target = "$ws\install\bin\SmoothGraphs.exe"
+        $candidates = @(
+          "$ws\install\SmoothGraphs.exe",
+          "$ws\build\SmoothGraphs.exe",
+          "$ws\build\Release\SmoothGraphs.exe"
+        )
+
+        if (Test-Path $target) {
+          Write-Host "Found at target: $target"
+        } else {
+          foreach ($c in $candidates) {
+            if (Test-Path $c) {
+              Write-Host "Found at: $c"
+              New-Item -ItemType Directory -Force -Path "$ws\install\bin" | Out-Null
+              Copy-Item $c "$ws\install\bin\\"
+              break
+            }
+          }
+        }
+
+        if (-not (Test-Path $target)) {
+          $found = Get-ChildItem -Recurse -Path build, install -Filter "SmoothGraphs.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($found) {
+            Write-Host "Recursive found: $($found.FullName)"
+            New-Item -ItemType Directory -Force -Path "$ws\install\bin" | Out-Null
+            Copy-Item $found.FullName "$ws\install\bin\\"
+          }
+        }
+
+        if (-not (Test-Path $target)) {
+          Write-Error "SmoothGraphs.exe NOT FOUND!"
+          exit 1
+        }
+        Write-Host "Ready: $target"
+
     - name: Copy application icon
       shell: pwsh
       run: |
-        $iconSource = "${{ github.workspace }}\resources\graph.ico"
-        $iconDest = "${{ github.workspace }}\install\bin\graph.ico"
-
-        # Убеждаемся, что директория назначения существует
-        $destDir = Split-Path $iconDest -Parent
-        if (-not (Test-Path $destDir)) {
-            New-Item -ItemType Directory -Force -Path $destDir | Out-Null
-            Write-Host "Created directory: $destDir"
-        }
-
-        if (Test-Path $iconSource) {
-            Copy-Item $iconSource $iconDest -Force
-            Write-Host "✅ Icon copied to: $iconDest"
+        $iconSrc = "${{ github.workspace }}/resources/graph.ico"
+        $iconDst = "${{ github.workspace }}\install\bin\graph.ico"
+        New-Item -ItemType Directory -Force -Path "${{ github.workspace }}\install\bin" | Out-Null
+        if (Test-Path $iconSrc) {
+          Copy-Item $iconSrc $iconDst -Force
+          Write-Host "Icon copied: $iconDst"
         } else {
-            Write-Error "❌ Icon not found at: $iconSource"
-            exit 1
+          Write-Error "Icon not found: $iconSrc"
+          exit 1
         }
 
     - name: Deploy Qt DLLs (windeployqt)
