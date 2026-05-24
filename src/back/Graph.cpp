@@ -95,27 +95,50 @@ void Graph::deleteNode(ID id) {
 
   SmoothNode *node = it->second;
 
-  // Удаляем все связанные рёбра из сцены
-  for (SmoothEdge *edge : node->getOutcomingEdges()) {
+  // 1. Удаляем все связанные рёбра ИЗ ОБОИХ КОНЦОВ
+  // Сначала копируем списки, так как они будут меняться при удалении
+  QList<SmoothEdge *> outEdges = node->getOutcomingEdges();
+  QList<SmoothEdge *> inEdges = node->getIncomingEdges();
+
+  // Удаляем исходящие рёбра
+  for (SmoothEdge *edge : outEdges) {
+    SmoothNode *endNode = edge->getEndNode();
+    if (endNode) {
+      endNode->removeIncomingEdge(edge); // Удаляем из списка конечного узла
+    }
     if (edge && edge->scene()) {
       edge->scene()->removeItem(edge);
     }
-  }
-  for (SmoothEdge *edge : node->getIncomingEdges()) {
-    if (edge && edge->scene()) {
-      edge->scene()->removeItem(edge);
-    }
+    delete edge; // Важно: удаляем объект ребра
   }
 
-  // Удаляем узел из сцены
+  // Удаляем входящие рёбра
+  for (SmoothEdge *edge : inEdges) {
+    SmoothNode *startNode = edge->getStartNode();
+    if (startNode) {
+      startNode->removeOutgoingEdge(edge); // Удаляем из списка начального узла
+    }
+    if (edge && edge->scene()) {
+      edge->scene()->removeItem(edge);
+    }
+    delete edge;
+  }
+
+  // 2. Очищаем списки рёбер у удаляемого узла
+  node->clearOutcomingEdges();
+  node->clearIncomingEdges();
+
+  // 3. Удаляем узел из сцены
   if (node && node->scene()) {
     node->scene()->removeItem(node);
   }
+  delete node; // Важно: удаляем объект узла
 
+  // 4. Удаляем из внутренних структур графа
   nodes_.erase(id);
   adjList_.erase(id);
-  // edgeWeights_.erase(id);
 
+  // 5. Удаляем ID из списков смежности других узлов
   for (auto &[nodeId, neighbours] : adjList_) {
     neighbours.remove(id);
   }
