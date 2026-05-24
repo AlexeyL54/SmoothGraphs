@@ -34,6 +34,9 @@ private:
   unsigned long long lastValidPathRevision_ = 0;
   bool hasValidPath_ = false;
 
+  QString graphFocusDir_ = "";
+  QString solutionFocusDir_ = "";
+
   QString generateGlobalStyleSheet() const;
   QString generateMenuBarStyleSheet() const;
   QString generateGraphViewStyleSheet() const;

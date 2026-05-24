@@ -3,6 +3,7 @@
 #include "Figures.hpp"
 #include "MenuBar.hpp"
 #include "ThemeManager.hpp"
+#include "qcoreapplication.h"
 
 #include <QFileDialog>
 #include <QMessageBox>
@@ -172,8 +173,12 @@ void MainWindow::onSaveSolution() {
     return;
   }
 
+  QString path = QDir::homePath();
+  if (!solutionFocusDir_.isEmpty())
+    path = solutionFocusDir_;
+
   QString filepath = QFileDialog::getSaveFileName(
-      this, "Сохранить решение", QString(),
+      this, "Сохранить решение", path,
       "Text Files (*.txt);;Log Files (*.log);;All Files (*)");
 
   if (!filepath.isEmpty()) {
@@ -182,6 +187,7 @@ void MainWindow::onSaveSolution() {
       filepath += ".txt";
     }
     saveSolutionToFile(filepath);
+    solutionFocusDir_ = QFileInfo(filepath).absolutePath();
   }
 }
 
@@ -689,14 +695,19 @@ void MainWindow::onOpenGraph() {
     }
   }
 
-  QString filepath = QFileDialog::getOpenFileName(
-      this, "Открыть граф", QString(), "Graph Files (*.gphz)");
+  QString path = QDir::homePath();
+  if (!graphFocusDir_.isEmpty())
+    path = graphFocusDir_;
+
+  QString filepath = QFileDialog::getOpenFileName(this, "Открыть граф", path,
+                                                  "Graph Files (*.gphz)");
 
   if (showCyrillicWarning(filepath))
     return;
 
   if (!filepath.isEmpty()) {
     loadGraphFromFile(filepath);
+    graphFocusDir_ = QFileInfo(filepath).absolutePath();
   }
 }
 
