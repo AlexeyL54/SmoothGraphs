@@ -706,8 +706,8 @@ void MainWindow::onOpenGraph() {
   QString filepath = QFileDialog::getOpenFileName(this, "Открыть граф", path,
                                                   "Graph Files (*.gphz)");
 
-  if (showCyrillicWarning(filepath))
-    return;
+  // if (showCyrillicWarning(filepath))
+  // return;
 
   if (!filepath.isEmpty()) {
     loadGraphFromFile(filepath);
