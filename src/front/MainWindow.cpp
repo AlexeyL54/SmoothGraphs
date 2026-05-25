@@ -9,8 +9,11 @@
 #include <QMessageBox>
 #include <QVBoxLayout>
 
-// MainWindow.cpp - исправленный конструктор, подключения для saveBtn_
-
+/**
+ * @brief Конструктор главного окна.
+ * @param themeMng Менеджер тем оформления (ссылка).
+ * @param parent Родительский виджет (по умолчанию nullptr).
+ */
 MainWindow::MainWindow(ThemeManager &themeMng, QWidget *parent)
     : QWidget(parent), logger_(true), graph_(new Graph(&logger_)) {
 
@@ -100,6 +103,12 @@ MainWindow::MainWindow(ThemeManager &themeMng, QWidget *parent)
   updateStyle();
 }
 
+/**
+ * @brief Слот для обработки изменения структуры графа.
+ *
+ * Инвалидирует кэшированные данные о найденном пути,
+ * так как граф был изменён.
+ */
 void MainWindow::onGraphChanged() {
   qDebug() << "Graph structure changed. Invalidating cached path data.";
   hasValidPath_ = false;
@@ -122,6 +131,10 @@ bool containsCyrillic(const QString &text) {
   return false;
 }
 
+/**
+ * @brief Обрабатывает событие изменения размера окна.
+ * @param event Событие изменения размера.
+ */
 void MainWindow::resizeEvent(QResizeEvent *event) {
   QWidget::resizeEvent(event);
   if (graphView_) {
@@ -132,8 +145,16 @@ void MainWindow::resizeEvent(QResizeEvent *event) {
   }
 }
 
+/**
+ * @brief Слот для обновления интерфейса при смене темы.
+ */
 void MainWindow::onThemeChanged() { updateStyle(); }
 
+/**
+ * @brief Сохраняет лог решения (результат поиска пути) в файл.
+ * @param filepath Путь к файлу для сохранения.
+ * @return true, если сохранение прошло успешно, иначе false.
+ */
 bool MainWindow::saveSolutionToFile(const QString &filepath) {
   if (logger_.getLog().isEmpty()) {
     showNotification("Нет данных о решении! Сначала выполните поиск пути.",
@@ -156,6 +177,9 @@ bool MainWindow::saveSolutionToFile(const QString &filepath) {
   return result >= 0;
 }
 
+/**
+ * @brief Слот для сохранения решения (лога) в файл.
+ */
 void MainWindow::onSaveSolution() {
   // Было ли вообще найдено решение?
   if (!hasValidPath_) {
@@ -181,9 +205,6 @@ void MainWindow::onSaveSolution() {
       this, "Сохранить решение", path,
       "Text Files (*.txt);;Log Files (*.log);;All Files (*)");
 
-  // if (showCyrillicWarning(filepath))
-  // return;
-
   if (!filepath.isEmpty()) {
     if (!filepath.endsWith(".txt", Qt::CaseInsensitive) &&
         !filepath.endsWith(".log", Qt::CaseInsensitive)) {
@@ -194,6 +215,10 @@ void MainWindow::onSaveSolution() {
   }
 }
 
+/**
+ * @brief Генерирует глобальную таблицу стилей приложения.
+ * @return QString Строка CSS со стилями для всех виджетов.
+ */
 QString MainWindow::generateGlobalStyleSheet() const {
   ThemeColors colors = themeMng_->getThemeColors();
 
@@ -352,6 +377,10 @@ QString MainWindow::generateGlobalStyleSheet() const {
       .arg(colors.hover.name());
 }
 
+/**
+ * @brief Генерирует таблицу стилей для панели меню.
+ * @return QString Строка CSS со стилями для меню-бара.
+ */
 QString MainWindow::generateMenuBarStyleSheet() const {
   ThemeColors colors = themeMng_->getThemeColors();
 
@@ -447,6 +476,10 @@ QString MainWindow::generateMenuBarStyleSheet() const {
       .arg(colors.border.name());
 }
 
+/**
+ * @brief Генерирует таблицу стилей для области отображения графа.
+ * @return QString Строка CSS со стилями для QGraphicsView.
+ */
 QString MainWindow::generateGraphViewStyleSheet() const {
   ThemeColors colors = themeMng_->getThemeColors();
 
@@ -460,6 +493,9 @@ QString MainWindow::generateGraphViewStyleSheet() const {
       .arg(colors.background.name());
 }
 
+/**
+ * @brief Обновляет цвета всех элементов графа согласно текущей теме.
+ */
 void MainWindow::updateGraphColors() {
   if (!graphView_ || !graphView_->scene())
     return;
@@ -468,6 +504,9 @@ void MainWindow::updateGraphColors() {
   graphView_->updateAllElementsTheme(colors);
 }
 
+/**
+ * @brief Обновляет стиль всего окна и дочерних элементов.
+ */
 void MainWindow::updateStyle() {
   qApp->setStyleSheet(generateGlobalStyleSheet());
 
@@ -481,6 +520,11 @@ void MainWindow::updateStyle() {
   }
 }
 
+/**
+ * @brief Отображает всплывающее уведомление (информационное или об ошибке).
+ * @param message Текст сообщения.
+ * @param isError true, если сообщение об ошибке, false — информация.
+ */
 void MainWindow::showNotification(const QString &message, bool isError) {
   QMessageBox msgBox;
   msgBox.setWindowTitle(isError ? "Ошибка" : "Информация");
@@ -489,6 +533,11 @@ void MainWindow::showNotification(const QString &message, bool isError) {
   msgBox.exec();
 }
 
+/**
+ * @brief Сохраняет текущий граф в файл.
+ * @param filepath Путь к файлу для сохранения.
+ * @return true, если сохранение прошло успешно, иначе false.
+ */
 bool MainWindow::saveGraphToFile(const QString &filepath) {
   QGraphicsScene *scene = graphView_->scene();
   if (!scene)
@@ -505,29 +554,11 @@ bool MainWindow::saveGraphToFile(const QString &filepath) {
   return success;
 }
 
-/*bool MainWindow::loadGraphFromFile(const QString &filepath) {
-  std::string stdPath = filepath.toStdString();
-
-  if (graphView_) {
-    graphView_->clearScene();
-  }
-
-  QGraphicsScene *scene = graphView_->scene();
-  bool success = graph_->loadFromFile(stdPath, scene);
-
-  if (success) {
-    updateGraphColors();
-    showNotification(
-        QString("Граф успешно загружен из файла:\n%1").arg(filepath));
-  } else {
-    showNotification("Ошибка при загрузке графа!", true);
-  }
-
-  return success;
-}*/
-
-// MainWindow.cpp
-
+/**
+ * @brief Загружает граф из файла.
+ * @param filepath Путь к файлу для загрузки.
+ * @return true, если загрузка прошла успешно, иначе false.
+ */
 bool MainWindow::loadGraphFromFile(const QString &filepath) {
   // 1. Очищаем текущее состояние
   if (graphView_) {
@@ -604,23 +635,18 @@ bool MainWindow::loadGraphFromFile(const QString &filepath) {
   return true;
 }
 
-bool MainWindow::showCyrillicWarning(const QString filepath) {
-  if (containsCyrillic(filepath)) {
-    QMessageBox::warning(
-        this, "Предупреждение",
-        "Путь содержит кириллические символы:\n" + filepath +
-            "\n\nЭто может вызвать проблемы при работе с файлами.");
-    return true;
-  }
-  return false;
-}
-
+/**
+ * @brief Слот для обработки обнаружения цикла в графе.
+ */
 void MainWindow::onLoopFound() {
   QMessageBox::warning(this, "Предупреждение",
                        "Перед поиском кратчайшего пути необхидимо убедиться, "
                        "что в графе отсутствуют циклы!");
 }
 
+/**
+ * @brief Выполняет поиск кратчайшего пути и визуализирует его.
+ */
 void MainWindow::findAndVisualizePath() {
   SmoothNode *startNode = graphView_->getStartNode();
   SmoothNode *endNode = graphView_->getEndNode();
@@ -660,6 +686,9 @@ void MainWindow::findAndVisualizePath() {
       QString("Кратчайший путь найден! Длина пути: %1 узлов").arg(path.size()));
 }
 
+/**
+ * @brief Слот для сохранения графа в файл.
+ */
 void MainWindow::onSaveGraph() {
   QString filepath;
 
@@ -687,6 +716,9 @@ void MainWindow::onSaveGraph() {
   }
 }
 
+/**
+ * @brief Слот для открытия графа из файла.
+ */
 void MainWindow::onOpenGraph() {
   if (graph_->isModified() && !graph_->getCurrentFilePath().isEmpty()) {
     QMessageBox::StandardButton reply = QMessageBox::question(
@@ -715,11 +747,20 @@ void MainWindow::onOpenGraph() {
   }
 }
 
+/**
+ * @brief Слот для запуска поиска кратчайшего пути.
+ */
 void MainWindow::onFindPath() { findAndVisualizePath(); }
 
+/**
+ * @brief Слот для очистки подсветки пути.
+ */
 void MainWindow::onStopPath() {
   graphView_->clearPathHighlight();
   showNotification("Выделение пути снято");
 }
 
+/**
+ * @brief Деструктор. Освобождает память, занятую объектом Graph.
+ */
 MainWindow::~MainWindow() { delete graph_; }

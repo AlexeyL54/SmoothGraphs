@@ -199,7 +199,7 @@ std::vector<SmoothNode *> Graph::getNodes() const {
  */
 std::vector<SmoothEdge *> Graph::getEdges() const {
   std::vector<SmoothEdge *> result;
-  QList<SmoothEdge *> uniqueEdges; // Для избежания дубликатов
+  QList<SmoothEdge *> uniqueEdges;
 
   for (const auto &pair : nodes_) {
     SmoothNode *node = pair.second;
@@ -350,40 +350,6 @@ bool Graph::parseFile(const QString &filepath, std::vector<NodeData> &nodes,
 
   return true;
 }
-
-/**
- * @brief Загружает граф из файла.
- * @param filepath Путь к файлу для загрузки.
- * @param scene Сцена QGraphicsScene для отрисовки узлов и рёбер.
- * @return true если загрузка успешна, false в противном случае.
- */
-/*bool Graph::loadFromFile(const std::string &filepath, QGraphicsScene *scene) {
-  Graphviz gv;
-  std::vector<std::tuple<ID, double, double>> nodesData;
-  std::vector<std::tuple<ID, ID, float>> edgesData;
-
-  if (!gv.loadFromFile(filepath, nodesData, edgesData)) {
-    qDebug() << "Failed to load graph from:" << filepath.c_str();
-    return false;
-  }
-
-  // Очищаем текущий граф
-  clear();
-
-  // Создаём узлы
-  std::unordered_map<ID, SmoothNode *> idToNode =
-      createNodesFromData(nodesData, scene);
-
-  // Создаём рёбра
-  createEdgesFromData(edgesData, idToNode, scene);
-
-  currentFilePath_ = filepath;
-  isModified_ = false;
-
-  notifyChange();
-  qDebug() << "Graph loaded from:" << filepath.c_str();
-  return true;
-}*/
 
 // Вспомогательная функция для топологической сортировки и проверки на
 // ацикличность Возвращает true, если цикл обнаружен
@@ -572,8 +538,7 @@ std::vector<SmoothNode *> Graph::findShortestPath(SmoothNode *from,
 
   // 4. Обратный проход ДП
   if (logger_) {
-    logger_->addMessage(
-        INFO, "Начинаем обратный проход динамического программирования...");
+    logger_->addMessage(INFO, "Начинаем обратный проход...");
   }
   int processedCount = 0;
 

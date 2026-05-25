@@ -130,7 +130,6 @@ static float safeStringToFloat(const QString &str, float defaultValue = 1.0f) {
     return value;
   }
 
-  // Если не получилось, пробуем очистить строку
   QString cleaned;
   for (QChar c : str) {
     if (c.isDigit() || c == '.' || c == '-' || c == '+') {
