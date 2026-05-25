@@ -1,4 +1,4 @@
-name: Build Windows MSVC (Simplified)
+name: Build Windows MSVC (with Action)
 
 on:
   push:
@@ -8,28 +8,45 @@ on:
 
 jobs:
   build-windows-msvc:
-    runs-on: windows-2022  # Используем Windows 2022 с предустановленным Qt
+    runs-on: windows-latest  # Используем latest вместо 2022
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # Настройка Visual Studio
+    # Установка Visual Studio environment
     - name: Add MSVC to PATH
       uses: ilammy/msvc-dev-cmd@v1
       with:
         arch: x64
 
-    # Qt уже предустановлен на windows-2022
-    - name: Setup Qt environment
+    # Установка Qt через официальный action
+    - name: Setup Qt6
+      uses: jurplel/install-qt-action@v4
+      with:
+        version: '6.5.0'
+        host: 'windows'
+        target: 'desktop'
+        arch: 'win64_msvc2019_64'
+        install-deps: 'true'
+        dir: '${{ github.workspace }}/Qt'
+        setup-python: 'true'
+        cache: true  # Включаем кэширование для ускорения сборки
+
+    # Получение пути к Qt
+    - name: Get Qt path
       shell: pwsh
       run: |
-        $qtPath = "C:\Qt\6.5.0\msvc2019_64"
+        $qtBase = "${{ github.workspace }}/Qt"
+        $qtVersion = "6.5.0"
+        $qtArch = "msvc2019_64"
+        $qtPath = Join-Path $qtBase "$qtVersion/$qtArch"
+        
         if (Test-Path $qtPath) {
           echo "QT_PATH=$qtPath" | Out-File -FilePath $env:GITHUB_ENV -Append
-          echo "Qt found at $qtPath"
+          Write-Host "Qt found at: $qtPath"
         } else {
-          Write-Error "Qt not found at $qtPath"
+          Write-Error "Qt not found at expected path: $qtPath"
           exit 1
         }
 
@@ -46,7 +63,7 @@ jobs:
       run: |
         cmake --build build --config Release --parallel
 
-    # Подготовка и деплой
+    # Подготовка релиза
     - name: Prepare Release
       shell: pwsh
       run: |
@@ -57,17 +74,50 @@ jobs:
         # Копируем exe
         $exePath = "${{ github.workspace }}\build\Release\SmoothGraphs.exe"
         if (Test-Path $exePath) {
-          Copy-Item $exePath "$releaseDir\" -Force
+          Copy-Item $exePath "$releaseDir\SmoothGraphs.exe" -Force
+          Write-Host "✓ Executable copied"
         } else {
           Write-Error "Executable not found"
           exit 1
         }
         
-        # Запускаем windeployqt
+        # Деплой Qt зависимостей
         $windeployqt = "$qtPath\bin\windeployqt.exe"
-        & $windeployqt --release "$releaseDir\SmoothGraphs.exe"
+        if (Test-Path $windeployqt) {
+          Write-Host "Running windeployqt..."
+          & $windeployqt --release --no-compiler-runtime "$releaseDir\SmoothGraphs.exe"
+          Write-Host "✓ Dependencies deployed"
+        } else {
+          Write-Warning "windeployqt not found"
+        }
+        
+        # Создаем run.bat для запуска
+        @"
+        @echo off
+        echo Starting SmoothGraphs...
+        start "" SmoothGraphs.exe
+        "@ | Out-File -FilePath "$releaseDir\run.bat" -Encoding ASCII
         
         Write-Host "✅ Release prepared in $releaseDir"
+
+    # Тестирование (опционально)
+    - name: Test Application
+      shell: pwsh
+      run: |
+        $exePath = "${{ github.workspace }}\release\SmoothGraphs.exe"
+        if (Test-Path $exePath) {
+          Write-Host "Testing application startup..."
+          try {
+            $process = Start-Process -FilePath $exePath -NoNewWindow -PassThru -ErrorAction Stop
+            Start-Sleep -Seconds 2
+            if (-not $process.HasExited) {
+              Stop-Process -Id $process.Id -Force
+              Write-Host "✓ Application started successfully"
+            }
+          } catch {
+            Write-Warning "Could not test application: $_"
+          }
+        }
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
