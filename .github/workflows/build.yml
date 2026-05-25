@@ -1,4 +1,4 @@
-name: Build Windows MSVC
+name: Build Windows MSVC (Simplified)
 
 on:
   push:
@@ -8,197 +8,70 @@ on:
 
 jobs:
   build-windows-msvc:
-    runs-on: windows-latest
+    runs-on: windows-2022  # Используем Windows 2022 с предустановленным Qt
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # Установка Qt6 через aqtinstall с правильными модулями
-    - name: Setup Qt6
-      uses: jurplel/install-qt-action@v4
-      with:
-        version: '6.5.0'
-        host: 'windows'
-        target: 'desktop'
-        arch: 'win64_msvc2019_64'
-        install-deps: 'true'
-        dir: '${{ github.workspace }}/Qt'
-        setup-python: 'true'
-        py7zr-version: '0.20.8'
-        # Убираем несуществующие модули
-        # modules: 'qt5compat'  # Опционально, если нужен
-
-    # Настройка Visual Studio environment
+    # Настройка Visual Studio
     - name: Add MSVC to PATH
       uses: ilammy/msvc-dev-cmd@v1
       with:
         arch: x64
 
-    # Настройка CMake для MSVC
+    # Qt уже предустановлен на windows-2022
+    - name: Setup Qt environment
+      shell: pwsh
+      run: |
+        $qtPath = "C:\Qt\6.5.0\msvc2019_64"
+        if (Test-Path $qtPath) {
+          echo "QT_PATH=$qtPath" | Out-File -FilePath $env:GITHUB_ENV -Append
+          echo "Qt found at $qtPath"
+        } else {
+          Write-Error "Qt not found at $qtPath"
+          exit 1
+        }
+
+    # Настройка CMake
     - name: Configure CMake
       run: |
         cmake -G "Visual Studio 17 2022" -A x64 `
           -DCMAKE_BUILD_TYPE=Release `
-          -DCMAKE_PREFIX_PATH="${{ github.workspace }}/Qt/6.5.0/msvc2019_64" `
+          -DCMAKE_PREFIX_PATH="$env:QT_PATH" `
           -S . -B build
 
-    # Сборка проекта
+    # Сборка
     - name: Build
       run: |
         cmake --build build --config Release --parallel
 
-    # Поиск исполняемого файла
-    - name: Debug - Find Executable
+    # Подготовка и деплой
+    - name: Prepare Release
       shell: pwsh
       run: |
-        Write-Host "=== Searching for .exe files ==="
-        Get-ChildItem -Recurse -Path build -Filter "*.exe" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "Build: $($_.FullName)" }
-
-    # Подготовка исполняемого файла
-    - name: Prepare Executable
-      shell: pwsh
-      run: |
-        $workspace = "${{ github.workspace }}"
-        $targetDir = "$workspace\release"
-        New-Item -ItemType Directory -Force -Path $targetDir | Out-Null
+        $qtPath = $env:QT_PATH
+        $releaseDir = "${{ github.workspace }}\release"
+        New-Item -ItemType Directory -Force -Path $releaseDir | Out-Null
         
-        # Ищем исполняемый файл в папке Release
-        $exePath = "$workspace\build\Release\SmoothGraphs.exe"
-        
-        if (-not (Test-Path $exePath)) {
-            $exe = Get-ChildItem -Recurse -Path "$workspace\build" -Filter "SmoothGraphs.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
-            if ($exe) {
-                $exePath = $exe.FullName
-            }
+        # Копируем exe
+        $exePath = "${{ github.workspace }}\build\Release\SmoothGraphs.exe"
+        if (Test-Path $exePath) {
+          Copy-Item $exePath "$releaseDir\" -Force
+        } else {
+          Write-Error "Executable not found"
+          exit 1
         }
-        
-        if (-not (Test-Path $exePath)) {
-            Write-Error "SmoothGraphs.exe not found!"
-            exit 1
-        }
-        
-        Write-Host "Found executable: $exePath"
-        Copy-Item $exePath "$targetDir\SmoothGraphs.exe" -Force
-        Write-Host "Copied to: $targetDir\SmoothGraphs.exe"
-
-    # Развертывание Qt DLLs с помощью windeployqt
-    - name: Deploy Qt Dependencies
-      shell: pwsh
-      run: |
-        $qtDir = "${{ github.workspace }}/Qt/6.5.0/msvc2019_64"
-        $appDir = "${{ github.workspace }}\release"
-        $exePath = "$appDir\SmoothGraphs.exe"
-        
-        if (-not (Test-Path $exePath)) {
-            Write-Error "Executable not found at $exePath"
-            exit 1
-        }
-        
-        # Находим windeployqt
-        $windeployqt = Join-Path $qtDir "bin\windeployqt.exe"
-        
-        if (-not (Test-Path $windeployqt)) {
-            Write-Error "windeployqt.exe not found at $windeployqt"
-            exit 1
-        }
-        
-        Write-Host "Using windeployqt: $windeployqt"
-        
-        # Добавляем путь к Qt DLL в PATH
-        $env:PATH = "$qtDir\bin;$env:PATH"
         
         # Запускаем windeployqt
-        & $windeployqt --release --no-compiler-runtime --no-system-d3d-compiler --no-opengl-sw --no-virtualkeyboard --no-angle --no-quick-import --no-translations $exePath
+        $windeployqt = "$qtPath\bin\windeployqt.exe"
+        & $windeployqt --release "$releaseDir\SmoothGraphs.exe"
         
-        if ($LASTEXITCODE -ne 0) {
-            Write-Warning "windeployqt exited with code $LASTEXITCODE"
-        }
-        
-        # Проверяем, что все необходимые DLL скопированы
-        $requiredDlls = @("Qt6Core.dll", "Qt6Gui.dll", "Qt6Widgets.dll")
-        foreach ($dll in $requiredDlls) {
-            $dllPath = Join-Path $appDir $dll
-            if (Test-Path $dllPath) {
-                Write-Host "✓ $dll present"
-            } else {
-                Write-Warning "✗ $dll missing"
-            }
-        }
-        
-        Write-Host "✅ Deployment completed"
+        Write-Host "✅ Release prepared in $releaseDir"
 
-    # Копирование иконки
-    - name: Copy application icon
-      shell: pwsh
-      run: |
-        $appDir = "${{ github.workspace }}\release"
-        $iconSrc = "${{ github.workspace }}\resources\graph.ico"
-        
-        if (Test-Path $iconSrc) {
-            Copy-Item $iconSrc "$appDir\graph.ico" -Force
-            Write-Host "Icon copied to $appDir"
-        } else {
-            Write-Warning "Icon not found: $iconSrc"
-        }
-
-    # Тестирование приложения
-    - name: Test Application
-      shell: pwsh
-      run: |
-        $appDir = "${{ github.workspace }}\release"
-        $exePath = "$appDir\SmoothGraphs.exe"
-        
-        if (-not (Test-Path $exePath)) {
-            Write-Error "Application not found at $exePath"
-            exit 1
-        }
-        
-        Write-Host "Testing application startup..."
-        try {
-            $process = Start-Process -FilePath $exePath -NoNewWindow -PassThru -ErrorAction Stop
-            Start-Sleep -Seconds 3
-            if (-not $process.HasExited) {
-                Stop-Process -Id $process.Id -Force
-                Write-Host "✅ Application started successfully!"
-            } else {
-                Write-Warning "Application exited immediately with code: $($process.ExitCode)"
-                # Не проваливаем сборку, так как это может быть из-за отсутствия GUI
-            }
-        } catch {
-            Write-Warning "Failed to test application: $_"
-            # Не проваливаем сборку
-        }
-
-    # Создание ZIP архива
-    - name: Create ZIP Archive
-      shell: pwsh
-      run: |
-        $releaseDir = "${{ github.workspace }}\release"
-        $zipPath = "${{ github.workspace }}\SmoothGraphs-Windows-x64.zip"
-        
-        # Убеждаемся, что папка release существует
-        if (Test-Path $releaseDir) {
-            Compress-Archive -Path "$releaseDir\*" -DestinationPath $zipPath -Force
-            Write-Host "Created archive: $zipPath"
-            Write-Host "Archive size: $([math]::Round((Get-Item $zipPath).Length / 1MB, 2)) MB"
-        } else {
-            Write-Error "Release directory not found: $releaseDir"
-            exit 1
-        }
-
-    # Загрузка артефакта
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
         name: SmoothGraphs-Windows-x64
         path: release/
-        retention-days: 30
-
-    # Загрузка ZIP архива
-    - name: Upload ZIP Archive
-      uses: actions/upload-artifact@v4
-      with:
-        name: SmoothGraphs-Windows-x64-ZIP
-        path: SmoothGraphs-Windows-x64.zip
         retention-days: 30
