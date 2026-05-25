@@ -19,21 +19,34 @@ jobs:
       with:
         arch: x64
 
+    - name: Create vcpkg.json
+      shell: pwsh
+      run: |
+        $vcpkgJson = @"
+        {
+          "name": "smoothgraphs",
+          "version": "1.0.0",
+          "dependencies": [
+            "qt6-base"
+          ]
+        }
+        "@
+        $vcpkgJson | Out-File -FilePath "vcpkg.json" -Encoding UTF8
+        Write-Host "Created vcpkg.json with Qt6 dependencies"
+
     - name: Setup vcpkg
       uses: lukka/run-vcpkg@v11
       with:
         vcpkgDirectory: 'C:/vcpkg'
-        vcpkgGitCommit: 'master'
-
-    - name: Install Qt6 via vcpkg
-      run: |
-        C:/vcpkg/vcpkg install qt6-base:x64-windows
+        vcpkgGitCommitId: '2024.01.12'  # Стабильный коммит vcpkg
+        runVcpkgInstall: true
 
     - name: Configure CMake
       run: |
         cmake -G "Visual Studio 17 2022" -A x64 `
           -DCMAKE_BUILD_TYPE=Release `
           -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake `
+          -DVCPKG_TARGET_TRIPLET=x64-windows `
           -S . -B build
 
     - name: Build
@@ -46,10 +59,43 @@ jobs:
         $releaseDir = "${{ github.workspace }}\release"
         New-Item -ItemType Directory -Force -Path $releaseDir | Out-Null
         
+        # Копируем exe
         $exePath = "${{ github.workspace }}\build\Release\SmoothGraphs.exe"
-        Copy-Item $exePath "$releaseDir\SmoothGraphs.exe" -Force
+        if (Test-Path $exePath) {
+          Copy-Item $exePath "$releaseDir\SmoothGraphs.exe" -Force
+          Write-Host "✓ Executable copied"
+        } else {
+          Write-Error "Executable not found at $exePath"
+          exit 1
+        }
         
-        Write-Host "✅ Release prepared"
+        # Копируем Qt DLLs из vcpkg
+        $qtDllPath = "C:/vcpkg/installed/x64-windows/bin"
+        if (Test-Path $qtDllPath) {
+          $dlls = @("Qt6Core.dll", "Qt6Gui.dll", "Qt6Widgets.dll")
+          foreach ($dll in $dlls) {
+            $src = Join-Path $qtDllPath $dll
+            if (Test-Path $src) {
+              Copy-Item $src "$releaseDir\" -Force
+              Write-Host "✓ Copied $dll"
+            }
+          }
+        }
+        
+        # Копируем плагины Qt
+        $qtPluginsPath = "C:/vcpkg/installed/x64-windows/plugins"
+        if (Test-Path $qtPluginsPath) {
+          $plugins = @("platforms", "styles", "imageformats")
+          foreach ($plugin in $plugins) {
+            $src = Join-Path $qtPluginsPath $plugin
+            if (Test-Path $src) {
+              Copy-Item -Recurse $src "$releaseDir\$plugin" -Force
+              Write-Host "✓ Copied plugin: $plugin"
+            }
+          }
+        }
+        
+        Write-Host "✅ Release prepared in $releaseDir"
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
