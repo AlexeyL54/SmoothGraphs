@@ -1,4 +1,4 @@
-name: Build Windows MSVC (vcpkg)
+name: Build Windows (MSVC)
 
 on:
   push:
@@ -7,99 +7,92 @@ on:
     branches: [ main, master ]
 
 jobs:
-  build-windows-msvc:
+  build-windows:
     runs-on: windows-latest
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Add MSVC to PATH
-      uses: ilammy/msvc-dev-cmd@v1
+    # Установка Qt
+    - name: Setup Qt6
+      uses: jurplel/install-qt-action@v4
       with:
-        arch: x64
+        version: '6.5.0'
+        host: 'windows'
+        target: 'desktop'
+        arch: 'win64_msvc2019_64'
+        install-deps: 'true'
+        dir: ${{ github.workspace }}/Qt
 
-    - name: Create vcpkg.json
-      shell: pwsh
-      run: |
-        $vcpkgJson = @"
-        {
-          "name": "smoothgraphs",
-          "version": "1.0.0",
-          "dependencies": [
-            "qt6-base"
-          ]
-        }
-        "@
-        $vcpkgJson | Out-File -FilePath "vcpkg.json" -Encoding UTF8
-        Write-Host "Created vcpkg.json with Qt6 dependencies"
-
-    - name: Setup vcpkg
-      uses: lukka/run-vcpkg@v11
-      with:
-        vcpkgDirectory: 'C:/vcpkg'
-        vcpkgGitCommitId: '2024.01.12'  # Стабильный коммит vcpkg
-        runVcpkgInstall: true
-
+    # Настройка CMake
     - name: Configure CMake
       run: |
-        cmake -G "Visual Studio 17 2022" -A x64 `
+        cmake -B build `
+          -G "Visual Studio 17 2022" `
+          -A x64 `
           -DCMAKE_BUILD_TYPE=Release `
-          -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake `
-          -DVCPKG_TARGET_TRIPLET=x64-windows `
-          -S . -B build
+          -DCMAKE_PREFIX_PATH="${{ github.workspace }}/Qt/6.5.0/msvc2019_64" `
+          -DCMAKE_INSTALL_PREFIX=install
 
     - name: Build
       run: |
         cmake --build build --config Release --parallel
 
-    - name: Prepare Release
+    - name: Install
+      run: |
+        cmake --install build --config Release
+
+    # Деплой Qt DLLs
+    - name: Deploy Qt DLLs (windeployqt)
       shell: pwsh
       run: |
-        $releaseDir = "${{ github.workspace }}\release"
-        New-Item -ItemType Directory -Force -Path $releaseDir | Out-Null
-        
-        # Копируем exe
-        $exePath = "${{ github.workspace }}\build\Release\SmoothGraphs.exe"
-        if (Test-Path $exePath) {
-          Copy-Item $exePath "$releaseDir\SmoothGraphs.exe" -Force
-          Write-Host "✓ Executable copied"
+        # Находим windeployqt.exe
+        $winDeployQt = Get-Command windeployqt.exe -ErrorAction SilentlyContinue
+
+        if (-not $winDeployQt) {
+            # Если не в PATH, пробуем стандартный путь
+            $qtRoot = "C:\Qt\6.5.0\msvc2019_64"
+            $winDeployQtPath = Join-Path $qtRoot "bin\windeployqt.exe"
+
+            if (Test-Path $winDeployQtPath) {
+                $winDeployQt = $winDeployQtPath
+            } else {
+                # Путь из workspace
+                $wsQtPath = "${{ github.workspace }}\Qt\6.5.0\msvc2019_64\bin\windeployqt.exe"
+                if (Test-Path $wsQtPath) {
+                    $winDeployQt = $wsQtPath
+                } else {
+                    Write-Error "❌ windeployqt.exe not found"
+                    exit 1
+                }
+            }
         } else {
-          Write-Error "Executable not found at $exePath"
-          exit 1
+            $winDeployQt = $winDeployQt.Source
         }
-        
-        # Копируем Qt DLLs из vcpkg
-        $qtDllPath = "C:/vcpkg/installed/x64-windows/bin"
-        if (Test-Path $qtDllPath) {
-          $dlls = @("Qt6Core.dll", "Qt6Gui.dll", "Qt6Widgets.dll")
-          foreach ($dll in $dlls) {
-            $src = Join-Path $qtDllPath $dll
-            if (Test-Path $src) {
-              Copy-Item $src "$releaseDir\" -Force
-              Write-Host "✓ Copied $dll"
-            }
-          }
+
+        Write-Host "Using windeployqt from: $winDeployQt"
+
+        $appPath = "${{ github.workspace }}\install\bin\SmoothGraphs.exe"
+
+        if (-not (Test-Path $appPath)) {
+            Write-Error "❌ Application executable not found at: $appPath"
+            exit 1
         }
-        
-        # Копируем плагины Qt
-        $qtPluginsPath = "C:/vcpkg/installed/x64-windows/plugins"
-        if (Test-Path $qtPluginsPath) {
-          $plugins = @("platforms", "styles", "imageformats")
-          foreach ($plugin in $plugins) {
-            $src = Join-Path $qtPluginsPath $plugin
-            if (Test-Path $src) {
-              Copy-Item -Recurse $src "$releaseDir\$plugin" -Force
-              Write-Host "✓ Copied plugin: $plugin"
-            }
-          }
+
+        Write-Host "Running windeployqt..."
+        # Флаг --no-translations оставлен как в вашем рабочем примере
+        & $winDeployQt --release --no-compiler-runtime --no-opengl-sw --no-translations "$appPath"
+
+        if ($LASTEXITCODE -ne 0) {
+            Write-Error "❌ windeployqt failed with exit code $LASTEXITCODE"
+            exit 1
         }
-        
-        Write-Host "✅ Release prepared in $releaseDir"
+        Write-Host "✅ Qt dependencies deployed."
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
         name: SmoothGraphs-Windows-x64
-        path: release/
+        path: install/
         retention-days: 30

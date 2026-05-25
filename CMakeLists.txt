@@ -1,7 +1,7 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.16)
 project(SmoothGraphs)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
@@ -9,21 +9,15 @@ set(CMAKE_AUTOUIC ON)
 
 # Настройки для MSVC
 if(MSVC)
-    # Используем статическую линковку CRT для уменьшения зависимостей
-    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-    
-    # Включаем обработку исключений
-    add_compile_options(/EHsc)
-    
-    # Отключаем предупреждения о небезопасных функциях
+    add_compile_options(/EHsc /MP)
     add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
 endif()
 
 find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
 
-# Получаем путь к Qt
-get_target_property(QT6_LOCATION Qt6::Core LOCATION)
-message(STATUS "Qt6 found at: ${QT6_LOCATION}")
+# Выводим информацию о Qt для отладки
+message(STATUS "Qt6 found at: ${Qt6_DIR}")
+message(STATUS "Qt6 version: ${Qt6_VERSION}")
 
 set(SOURCES
     main.cpp
@@ -61,10 +55,9 @@ target_link_libraries(SmoothGraphs Qt6::Core Qt6::Widgets)
 # Установка
 install(TARGETS SmoothGraphs
     RUNTIME DESTINATION bin
-    LIBRARY DESTINATION lib
 )
 
-# Копирование ресурсов
+# Копируем иконку если есть
 install(FILES resources/graph.ico
     DESTINATION bin
     OPTIONAL
