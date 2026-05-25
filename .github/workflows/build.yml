@@ -1,4 +1,4 @@
-name: Build Windows
+name: Build Windows MSVC
 
 on:
   push:
@@ -7,51 +7,52 @@ on:
     branches: [ main, master ]
 
 jobs:
-  build-windows:
+  build-windows-msvc:
     runs-on: windows-latest
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # Установка MSYS2 с MinGW-w64
-    - name: Setup MSYS2
-      uses: msys2/setup-msys2@v2
-      with:
-        msystem: UCRT64
-        update: true
-        install: >-
-          mingw-w64-ucrt-x86_64-cmake
-          mingw-w64-ucrt-x86_64-ninja
-          mingw-w64-ucrt-x86_64-gcc
-          mingw-w64-ucrt-x86_64-qt6
-
-    # Установка Qt (базовые компоненты)
+    # Установка Qt6 через официальный installer-action
     - name: Setup Qt6
       uses: jurplel/install-qt-action@v4
       with:
         version: '6.5.0'
         host: 'windows'
         target: 'desktop'
-        arch: 'win64_mingw'
+        arch: 'win64_msvc2019_64'
         install-deps: 'true'
-        dir: ${{ github.workspace }}/Qt
+        modules: 'qt6charts qt6svg'
+        dir: '${{ github.workspace }}/Qt'
+        setup-python: 'false'
+        tools: 'tools_ifw'
 
+    # Настройка Visual Studio environment
+    - name: Add MSVC to PATH
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: x64
+
+    # Настройка CMake для MSVC
     - name: Configure CMake
       run: |
-        cmake -G "MinGW Makefiles" `
+        cmake -G "Visual Studio 17 2022" -A x64 `
           -DCMAKE_BUILD_TYPE=Release `
-          -DCMAKE_INSTALL_PREFIX="${{ github.workspace }}/install" `
+          -DCMAKE_PREFIX_PATH="${{ github.workspace }}/Qt/6.5.0/msvc2019_64" `
           -S . -B build
 
+    # Сборка проекта
     - name: Build
       run: |
         cmake --build build --config Release --parallel
 
+    # Установка (копирование файлов)
     - name: Install
       run: |
-        cmake --install build --config Release
+        cmake --install build --config Release --prefix install
 
+    # Поиск исполняемого файла
     - name: Debug - Find Executable
       shell: pwsh
       run: |
@@ -59,187 +60,124 @@ jobs:
         Get-ChildItem -Recurse -Path build -Filter "*.exe" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "Build: $($_.FullName)" }
         Get-ChildItem -Recurse -Path install -Filter "*.exe" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "Install: $($_.FullName)" }
 
-    - name: Prepare Executable for Deployment
+    # Подготовка исполняемого файла
+    - name: Prepare Executable
       shell: pwsh
       run: |
-        $ws = "${{ github.workspace }}"
-        $target = "$ws\install\bin\SmoothGraphs.exe"
-        $candidates = @(
-          "$ws\install\SmoothGraphs.exe",
-          "$ws\build\SmoothGraphs.exe",
-          "$ws\build\Release\SmoothGraphs.exe"
-        )
-
-        if (Test-Path $target) {
-          Write-Host "Found at target: $target"
-        } else {
-          foreach ($c in $candidates) {
-            if (Test-Path $c) {
-              Write-Host "Found at: $c"
-              New-Item -ItemType Directory -Force -Path "$ws\install\bin" | Out-Null
-              Copy-Item $c "$ws\install\bin\\"
-              break
-            }
-          }
+        $workspace = "${{ github.workspace }}"
+        $targetDir = "$workspace\release"
+        New-Item -ItemType Directory -Force -Path $targetDir | Out-Null
+        
+        # Ищем исполняемый файл
+        $exe = Get-ChildItem -Recurse -Path "$workspace\build" -Filter "SmoothGraphs.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+        
+        if (-not $exe) {
+            Write-Error "SmoothGraphs.exe not found!"
+            exit 1
         }
+        
+        Write-Host "Found executable: $($exe.FullName)"
+        Copy-Item $exe.FullName "$targetDir\SmoothGraphs.exe" -Force
+        Write-Host "Copied to: $targetDir\SmoothGraphs.exe"
 
-        if (-not (Test-Path $target)) {
-          $found = Get-ChildItem -Recurse -Path build, install -Filter "SmoothGraphs.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
-          if ($found) {
-            Write-Host "Recursive found: $($found.FullName)"
-            New-Item -ItemType Directory -Force -Path "$ws\install\bin" | Out-Null
-            Copy-Item $found.FullName "$ws\install\bin\\"
-          }
+    # Развертывание Qt DLLs с помощью windeployqt (MSVC версия)
+    - name: Deploy Qt Dependencies
+      shell: pwsh
+      run: |
+        $qtDir = "${{ github.workspace }}/Qt/6.5.0/msvc2019_64"
+        $appDir = "${{ github.workspace }}\release"
+        $exePath = "$appDir\SmoothGraphs.exe"
+        
+        # Находим windeployqt
+        $windeployqt = Get-ChildItem -Path $qtDir -Recurse -Filter "windeployqt.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+        
+        if (-not $windeployqt) {
+            Write-Error "windeployqt.exe not found in $qtDir"
+            exit 1
         }
-
-        if (-not (Test-Path $target)) {
-          Write-Error "SmoothGraphs.exe NOT FOUND!"
-          exit 1
+        
+        Write-Host "Using windeployqt: $($windeployqt.FullName)"
+        
+        # Добавляем путь к Qt DLL в PATH
+        $env:PATH = "$qtDir\bin;$env:PATH"
+        
+        # Запускаем windeployqt с правильными параметрами
+        & $windeployqt.FullName --release --no-compiler-runtime --no-system-d3d-compiler --no-opengl-sw --no-virtualkeyboard --no-angle --no-quick-import --no-translations --verbose 1 $exePath
+        
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "windeployqt exited with code $LASTEXITCODE"
         }
-        Write-Host "Ready: $target"
+        
+        # Дополнительно копируем Visual C++ Redistributable
+        $vcRedistDir = "C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Redist/MSVC"
+        if (Test-Path $vcRedistDir) {
+            $latestVCRedist = Get-ChildItem -Path $vcRedistDir -Directory | Sort-Object Name -Descending | Select-Object -First 1
+            $vcRedistPath = Join-Path $latestVCRedist.FullName "x64\Microsoft.VC143.CRT\*.dll"
+            Copy-Item $vcRedistPath $appDir -Force -ErrorAction SilentlyContinue
+            Write-Host "Copied VC Redist DLLs"
+        }
+        
+        Write-Host "✅ Deployment completed"
 
+    # Копирование иконки
     - name: Copy application icon
       shell: pwsh
       run: |
-        $iconSrc = "${{ github.workspace }}/resources/graph.ico"
-        $iconDst = "${{ github.workspace }}\install\bin\graph.ico"
-        New-Item -ItemType Directory -Force -Path "${{ github.workspace }}\install\bin" | Out-Null
+        $appDir = "${{ github.workspace }}\release"
+        $iconSrc = "${{ github.workspace }}\resources\graph.ico"
+        
         if (Test-Path $iconSrc) {
-          Copy-Item $iconSrc $iconDst -Force
-          Write-Host "Icon copied: $iconDst"
+            Copy-Item $iconSrc "$appDir\graph.ico" -Force
+            Write-Host "Icon copied to $appDir"
         } else {
-          Write-Error "Icon not found: $iconSrc"
-          exit 1
+            Write-Warning "Icon not found: $iconSrc"
         }
 
-    - name: Deploy Qt DLLs (Manual)
+    # Тестирование приложения
+    - name: Test Application
       shell: pwsh
       run: |
-        # 1. Находим Qt
-        $windeployqt = Get-Command windeployqt.exe -ErrorAction SilentlyContinue
-        if (-not $windeployqt) {
-            Write-Error "windeployqt.exe not found"
-            exit 1
-        }
+        $appDir = "${{ github.workspace }}\release"
+        $exePath = "$appDir\SmoothGraphs.exe"
         
-        $qtBinDir = Split-Path $windeployqt.Source -Parent
-        $qtMingwDir = Split-Path $qtBinDir -Parent
-        $qtPluginDir = Join-Path $qtMingwDir "plugins"
-        
-        Write-Host "Qt Bin Dir: $qtBinDir"
-        Write-Host "Qt Plugin Dir: $qtPluginDir"
-        
-        $appDir = "${{ github.workspace }}\install\bin"
-        $appPath = Join-Path $appDir "SmoothGraphs.exe"
-        
-        if (-not (Test-Path $appPath)) {
-            Write-Error "App not found: $appPath"
-            exit 1
-        }
-        
-        # 2. Копируем основные Qt DLL
-        Write-Host "Copying Qt DLLs..."
-        $qtDlls = @(
-            "Qt6Core.dll",
-            "Qt6Gui.dll",
-            "Qt6Widgets.dll"
-        )
-        
-        foreach ($dll in $qtDlls) {
-            $src = Join-Path $qtBinDir $dll
-            $dst = Join-Path $appDir $dll
-            if (Test-Path $src) {
-                Copy-Item $src $dst -Force
-                Write-Host "  Copied $dll"
-            } else {
-                Write-Warning "  Not found: $dll"
-            }
-        }
-        
-        # 3. Копируем runtime библиотеки MinGW
-        Write-Host "Copying MinGW runtime..."
-        $mingwRuntime = @(
-            "libgcc_s_seh-1.dll",
-            "libstdc++-6.dll",
-            "libwinpthread-1.dll"
-        )
-        
-        foreach ($dll in $mingwRuntime) {
-            $src = Join-Path $qtBinDir $dll
-            $dst = Join-Path $appDir $dll
-            if (Test-Path $src) {
-                Copy-Item $src $dst -Force
-                Write-Host "  Copied $dll"
-            } else {
-                Write-Warning "  Not found: $dll"
-            }
-        }
-        
-        # 4. Копируем платформенный плагин (обязательно!)
-        Write-Host "Copying platform plugin..."
-        $srcPlatforms = Join-Path $qtPluginDir "platforms"
-        $dstPlatforms = Join-Path $appDir "platforms"
-        
-        if (Test-Path $srcPlatforms) {
-            New-Item -ItemType Directory -Force -Path $dstPlatforms | Out-Null
-            Copy-Item "$srcPlatforms\qwindows.dll" "$dstPlatforms\" -Force
-            Write-Host "  Copied platforms/qwindows.dll"
-        } else {
-            Write-Error "Platforms plugin not found at: $srcPlatforms"
-            exit 1
-        }
-        
-        # 5. Копируем стили (опционально, но рекомендуется)
-        Write-Host "Copying styles..."
-        $srcStyles = Join-Path $qtPluginDir "styles"
-        $dstStyles = Join-Path $appDir "styles"
-        
-        if (Test-Path $srcStyles) {
-            New-Item -ItemType Directory -Force -Path $dstStyles | Out-Null
-            Copy-Item "$srcStyles\qwindowsvistastyle.dll" "$dstStyles\" -Force -ErrorAction SilentlyContinue
-            Write-Host "  Copied styles"
-        }
-        
-        # 6. Копируем imageformats (для поддержки изображений)
-        Write-Host "Copying image formats..."
-        $srcImageFormats = Join-Path $qtPluginDir "imageformats"
-        $dstImageFormats = Join-Path $appDir "imageformats"
-        
-        if (Test-Path $srcImageFormats) {
-            New-Item -ItemType Directory -Force -Path $dstImageFormats | Out-Null
-            Copy-Item "$srcImageFormats\*" "$dstImageFormats\" -Force
-            Write-Host "  Copied imageformats"
-        }
-        
-        # 7. Копируем iconengines (для иконок)
-        Write-Host "Copying icon engines..."
-        $srcIconEngines = Join-Path $qtPluginDir "iconengines"
-        $dstIconEngines = Join-Path $appDir "iconengines"
-        
-        if (Test-Path $srcIconEngines) {
-            New-Item -ItemType Directory -Force -Path $dstIconEngines | Out-Null
-            Copy-Item "$srcIconEngines\*" "$dstIconEngines\" -Force
-            Write-Host "  Copied iconengines"
-        }
-        
-        Write-Host "✅ Manual deployment completed successfully!"
-        
-        # 8. Проверка - запускаем приложение чтобы убедиться
-        Write-Host "Testing application..."
+        Write-Host "Testing application startup..."
         try {
-            $process = Start-Process -FilePath $appPath -NoNewWindow -PassThru -ErrorAction Stop
-            Start-Sleep -Seconds 2
+            $process = Start-Process -FilePath $exePath -NoNewWindow -PassThru -ErrorAction Stop
+            Start-Sleep -Seconds 3
             if (-not $process.HasExited) {
                 Stop-Process -Id $process.Id -Force
                 Write-Host "✅ Application started successfully!"
+            } else {
+                Write-Error "Application exited immediately with code: $($process.ExitCode)"
+                exit 1
             }
         } catch {
-            Write-Warning "Could not test application: $_"
+            Write-Error "Failed to start application: $_"
+            exit 1
         }
 
+    # Создание ZIP архива
+    - name: Create ZIP Archive
+      shell: pwsh
+      run: |
+        $releaseDir = "${{ github.workspace }}\release"
+        $zipPath = "${{ github.workspace }}\SmoothGraphs-Windows-MSVC-x64.zip"
+        
+        Compress-Archive -Path "$releaseDir\*" -DestinationPath $zipPath -Force
+        Write-Host "Created archive: $zipPath"
+
+    # Загрузка артефакта
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: SmoothGraphs-Windows-x64
-        path: install/
+        name: SmoothGraphs-Windows-MSVC-x64
+        path: release/
+        retention-days: 30
+
+    # Загрузка ZIP архива (опционально)
+    - name: Upload ZIP Archive
+      uses: actions/upload-artifact@v4
+      with:
+        name: SmoothGraphs-Windows-MSVC-x64-ZIP
+        path: SmoothGraphs-Windows-MSVC-x64.zip
         retention-days: 30
