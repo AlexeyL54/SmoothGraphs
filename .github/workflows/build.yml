@@ -1,4 +1,4 @@
-name: Build Windows MSVC (with Action)
+name: Build Windows MSVC (vcpkg)
 
 on:
   push:
@@ -8,116 +8,48 @@ on:
 
 jobs:
   build-windows-msvc:
-    runs-on: windows-latest  # Используем latest вместо 2022
+    runs-on: windows-latest
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # Установка Visual Studio environment
     - name: Add MSVC to PATH
       uses: ilammy/msvc-dev-cmd@v1
       with:
         arch: x64
 
-    # Установка Qt через официальный action
-    - name: Setup Qt6
-      uses: jurplel/install-qt-action@v4
+    - name: Setup vcpkg
+      uses: lukka/run-vcpkg@v11
       with:
-        version: '6.5.0'
-        host: 'windows'
-        target: 'desktop'
-        arch: 'win64_msvc2019_64'
-        install-deps: 'true'
-        dir: '${{ github.workspace }}/Qt'
-        setup-python: 'true'
-        cache: true  # Включаем кэширование для ускорения сборки
+        vcpkgDirectory: 'C:/vcpkg'
+        vcpkgGitCommit: 'master'
 
-    # Получение пути к Qt
-    - name: Get Qt path
-      shell: pwsh
+    - name: Install Qt6 via vcpkg
       run: |
-        $qtBase = "${{ github.workspace }}/Qt"
-        $qtVersion = "6.5.0"
-        $qtArch = "msvc2019_64"
-        $qtPath = Join-Path $qtBase "$qtVersion/$qtArch"
-        
-        if (Test-Path $qtPath) {
-          echo "QT_PATH=$qtPath" | Out-File -FilePath $env:GITHUB_ENV -Append
-          Write-Host "Qt found at: $qtPath"
-        } else {
-          Write-Error "Qt not found at expected path: $qtPath"
-          exit 1
-        }
+        C:/vcpkg/vcpkg install qt6-base:x64-windows
 
-    # Настройка CMake
     - name: Configure CMake
       run: |
         cmake -G "Visual Studio 17 2022" -A x64 `
           -DCMAKE_BUILD_TYPE=Release `
-          -DCMAKE_PREFIX_PATH="$env:QT_PATH" `
+          -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake `
           -S . -B build
 
-    # Сборка
     - name: Build
       run: |
         cmake --build build --config Release --parallel
 
-    # Подготовка релиза
     - name: Prepare Release
       shell: pwsh
       run: |
-        $qtPath = $env:QT_PATH
         $releaseDir = "${{ github.workspace }}\release"
         New-Item -ItemType Directory -Force -Path $releaseDir | Out-Null
         
-        # Копируем exe
         $exePath = "${{ github.workspace }}\build\Release\SmoothGraphs.exe"
-        if (Test-Path $exePath) {
-          Copy-Item $exePath "$releaseDir\SmoothGraphs.exe" -Force
-          Write-Host "✓ Executable copied"
-        } else {
-          Write-Error "Executable not found"
-          exit 1
-        }
+        Copy-Item $exePath "$releaseDir\SmoothGraphs.exe" -Force
         
-        # Деплой Qt зависимостей
-        $windeployqt = "$qtPath\bin\windeployqt.exe"
-        if (Test-Path $windeployqt) {
-          Write-Host "Running windeployqt..."
-          & $windeployqt --release --no-compiler-runtime "$releaseDir\SmoothGraphs.exe"
-          Write-Host "✓ Dependencies deployed"
-        } else {
-          Write-Warning "windeployqt not found"
-        }
-        
-        # Создаем run.bat для запуска
-        @"
-        @echo off
-        echo Starting SmoothGraphs...
-        start "" SmoothGraphs.exe
-        "@ | Out-File -FilePath "$releaseDir\run.bat" -Encoding ASCII
-        
-        Write-Host "✅ Release prepared in $releaseDir"
-
-    # Тестирование (опционально)
-    - name: Test Application
-      shell: pwsh
-      run: |
-        $exePath = "${{ github.workspace }}\release\SmoothGraphs.exe"
-        if (Test-Path $exePath) {
-          Write-Host "Testing application startup..."
-          try {
-            $process = Start-Process -FilePath $exePath -NoNewWindow -PassThru -ErrorAction Stop
-            Start-Sleep -Seconds 2
-            if (-not $process.HasExited) {
-              Stop-Process -Id $process.Id -Force
-              Write-Host "✓ Application started successfully"
-            }
-          } catch {
-            Write-Warning "Could not test application: $_"
-          }
-        }
+        Write-Host "✅ Release prepared"
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
