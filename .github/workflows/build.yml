@@ -14,22 +14,23 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # Установка Qt (обновлённая версия)
+    # Установка Qt
     - name: Setup Qt6
       uses: jurplel/install-qt-action@v4
       with:
-        version: '6.7.2'           # Обновлено с 6.5.0 до 6.7.2
+        version: '6.7.2'
         host: 'windows'
         target: 'desktop'
-        arch: 'win64_msvc2019_64'  # Используем MSVC 2022 (совместим с windows-latest)
+        arch: 'win64_msvc2019_64'
         install-deps: 'true'
         dir: ${{ github.workspace }}/Qt
 
-    # Настройка CMake
+    # Настройка CMake (исправлено для PowerShell)
     - name: Configure CMake
+      shell: pwsh
       run: |
         cmake -B build `
-          -G "Visual Studio 18 2026" `        
+          -G "Visual Studio 18 2026" `
           -A x64 `
           -DCMAKE_BUILD_TYPE=Release `
           -DCMAKE_PREFIX_PATH="${{ github.workspace }}/Qt/6.7.2/msvc2019_64" `
@@ -47,19 +48,16 @@ jobs:
     - name: Deploy Qt DLLs (windeployqt)
       shell: pwsh
       run: |
-        # Находим windeployqt.exe
         $winDeployQt = Get-Command windeployqt.exe -ErrorAction SilentlyContinue
 
         if (-not $winDeployQt) {
-            # Стандартный путь для новой версии
             $qtRoot = "C:\Qt\6.7.2\msvc2019_64"
             $winDeployQtPath = Join-Path $qtRoot "bin\windeployqt.exe"
 
             if (Test-Path $winDeployQtPath) {
                 $winDeployQt = $winDeployQtPath
             } else {
-                # Путь из workspace
-                $wsQtPath = "${{ github.workspace }}\Qt\6.7.2\msvc2022_64\bin\windeployqt.exe"
+                $wsQtPath = "${{ github.workspace }}\Qt\6.7.2\msvc2019_64\bin\windeployqt.exe"
                 if (Test-Path $wsQtPath) {
                     $winDeployQt = $wsQtPath
                 } else {
