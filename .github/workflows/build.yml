@@ -14,14 +14,14 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # Установка Qt
+    # Установка Qt (обновлённая версия)
     - name: Setup Qt6
       uses: jurplel/install-qt-action@v4
       with:
-        version: '6.5.0'
+        version: '6.7.2'           # Обновлено с 6.5.0 до 6.7.2
         host: 'windows'
         target: 'desktop'
-        arch: 'win64_msvc2019_64'
+        arch: 'win64_msvc2022_64'  # Используем MSVC 2022 (совместим с windows-latest)
         install-deps: 'true'
         dir: ${{ github.workspace }}/Qt
 
@@ -29,10 +29,10 @@ jobs:
     - name: Configure CMake
       run: |
         cmake -B build `
-          -G "Visual Studio 18 2026" `
+          -G "Visual Studio 17 2022" `        # MSVC 2022
           -A x64 `
           -DCMAKE_BUILD_TYPE=Release `
-          -DCMAKE_PREFIX_PATH="${{ github.workspace }}/Qt/6.5.0/msvc2019_64" `
+          -DCMAKE_PREFIX_PATH="${{ github.workspace }}/Qt/6.7.2/msvc2022_64" `
           -DCMAKE_INSTALL_PREFIX=install
 
     - name: Build
@@ -51,15 +51,15 @@ jobs:
         $winDeployQt = Get-Command windeployqt.exe -ErrorAction SilentlyContinue
 
         if (-not $winDeployQt) {
-            # Если не в PATH, пробуем стандартный путь
-            $qtRoot = "C:\Qt\6.5.0\msvc2019_64"
+            # Стандартный путь для новой версии
+            $qtRoot = "C:\Qt\6.7.2\msvc2022_64"
             $winDeployQtPath = Join-Path $qtRoot "bin\windeployqt.exe"
 
             if (Test-Path $winDeployQtPath) {
                 $winDeployQt = $winDeployQtPath
             } else {
                 # Путь из workspace
-                $wsQtPath = "${{ github.workspace }}\Qt\6.5.0\msvc2019_64\bin\windeployqt.exe"
+                $wsQtPath = "${{ github.workspace }}\Qt\6.7.2\msvc2022_64\bin\windeployqt.exe"
                 if (Test-Path $wsQtPath) {
                     $winDeployQt = $wsQtPath
                 } else {
@@ -81,7 +81,6 @@ jobs:
         }
 
         Write-Host "Running windeployqt..."
-        # Флаг --no-translations оставлен как в вашем рабочем примере
         & $winDeployQt --release --no-compiler-runtime --no-opengl-sw --no-translations "$appPath"
 
         if ($LASTEXITCODE -ne 0) {
