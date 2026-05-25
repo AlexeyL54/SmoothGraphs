@@ -5,7 +5,8 @@
 int main(int argc, char *argv[]) {
   QApplication app(argc, argv);
 
-  app.setStyleSheet("");
+  app.setAttribute(Qt::AA_UseStyleSheetPropagationInWidgetStyles);
+
   ThemeManager themeMng;
 
   MainWindow mainWindow(themeMng);
