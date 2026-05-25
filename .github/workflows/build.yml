@@ -32,7 +32,7 @@ jobs:
           -G "Visual Studio 18 2026" `        
           -A x64 `
           -DCMAKE_BUILD_TYPE=Release `
-          -DCMAKE_PREFIX_PATH="${{ github.workspace }}/Qt/6.7.2/msvc2022_64" `
+          -DCMAKE_PREFIX_PATH="${{ github.workspace }}/Qt/6.7.2/msvc2019_64" `
           -DCMAKE_INSTALL_PREFIX=install
 
     - name: Build
@@ -52,7 +52,7 @@ jobs:
 
         if (-not $winDeployQt) {
             # Стандартный путь для новой версии
-            $qtRoot = "C:\Qt\6.7.2\msvc2022_64"
+            $qtRoot = "C:\Qt\6.7.2\msvc2019_64"
             $winDeployQtPath = Join-Path $qtRoot "bin\windeployqt.exe"
 
             if (Test-Path $winDeployQtPath) {
