@@ -559,6 +559,7 @@ bool MainWindow::saveGraphToFile(const QString &filepath) {
  * @param filepath Путь к файлу для загрузки.
  * @return true, если загрузка прошла успешно, иначе false.
  */
+// MainWindow.cpp
 bool MainWindow::loadGraphFromFile(const QString &filepath) {
   // 1. Очищаем текущее состояние
   if (graphView_) {
@@ -580,21 +581,14 @@ bool MainWindow::loadGraphFromFile(const QString &filepath) {
   QGraphicsScene *scene = graphView_->scene();
 
   for (const auto &ndata : nodesData) {
-    // Создаем визуальный объект
     SmoothNode *node = new SmoothNode(ndata.x, ndata.y, 50);
-    node->setId(ndata.id);
 
-    // Подключаем сигналы удаления ДО добавления в Graph/Scene
     connect(node, &SmoothNode::nodeAboutToBeDeleted, graphView_,
             [this](SmoothNode *n) { emit graphView_->nodeRemoved(n); });
 
-    // Добавляем в сцену
     scene->addItem(node);
-
-    // Регистрируем в модели Graph
-    graph_->addNode(node);
-
     createdNodes[ndata.id] = node;
+    graph_->addNodeWithId(node, ndata.id);
   }
 
   // 4. Создаем Ребра (UI + Model)
@@ -609,21 +603,14 @@ bool MainWindow::loadGraphFromFile(const QString &filepath) {
       SmoothEdge *edge = new SmoothEdge(start, end);
       edge->setWeight(edata.weight);
 
-      // Подключаем сигналы удаления
       connect(edge, &SmoothEdge::edgeAboutToBeDeleted, graphView_,
               [this](SmoothEdge *e) { emit graphView_->edgeRemoved(e); });
 
-      // Добавляем в сцену
       scene->addItem(edge);
-
-      // Обновляем позицию (нужно после addItem)
       edge->updatePosition();
-
-      // Связываем узлы и ребро
       start->addOutgoingEdge(edge);
       end->addIncomingEdge(edge);
 
-      // Регистрируем в модели Graph
       graph_->addEdge(edge);
     }
   }
@@ -632,6 +619,7 @@ bool MainWindow::loadGraphFromFile(const QString &filepath) {
   updateGraphColors();
   showNotification(
       QString("Граф успешно загружен из файла:\n%1").arg(filepath));
+
   return true;
 }
 

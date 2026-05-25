@@ -47,6 +47,42 @@ ID Graph::addNode(SmoothNode *node) {
 }
 
 /**
+ * @brief Добавляет узел в граф с указанным ID.
+ * @param node Указатель на добавляемый узел.
+ * @param id ID для узла.
+ * @return ID узла (тот же, что передан) или 0 если ошибка.
+ */
+ID Graph::addNodeWithId(SmoothNode *node, ID id) {
+  if (!node) {
+    qDebug() << "addNodeWithId: node is null";
+    return 0;
+  }
+
+  if (nodes_.find(id) != nodes_.end()) {
+    qDebug() << "addNodeWithId: Node with ID" << id << "already exists";
+    return 0;
+  }
+
+  if (getNodeId(node) != 0) {
+    qDebug() << "addNodeWithId: Node already in graph";
+    return getNodeId(node);
+  }
+
+  node->setId(id);
+  nodes_[id] = node;
+
+  if (id >= nextNodeId_) {
+    nextNodeId_ = id + 1;
+  }
+
+  isModified_ = true;
+  qDebug() << "Node added to graph with ID:" << id;
+  notifyChange();
+
+  return id;
+}
+
+/**
  * @brief Добавляет ребро в граф.
  * @param edge Указатель на добавляемое ребро.
  */

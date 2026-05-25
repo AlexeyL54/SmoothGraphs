@@ -59,6 +59,14 @@ public:
   ID addNode(SmoothNode *node);
 
   /**
+   * @brief Добавляет узел в граф с указанным ID.
+   * @param node Указатель на добавляемый узел.
+   * @param id ID для узла.
+   * @return ID узла (тот же, что передан) или 0 если ошибка.
+   */
+  ID addNodeWithId(SmoothNode *node, ID id);
+
+  /**
    * @brief Добавляет ребро в граф.
    * @param edge Указатель на добавляемое ребро.
    */
