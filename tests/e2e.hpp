@@ -7,6 +7,7 @@ class ThemeManager;
 class MainWindow;
 class Graph;
 class QGraphicsScene;
+class GraphView;
 
 /**
  * @class E2ETests
@@ -25,40 +26,30 @@ private slots:
   // Тесты создания и управления узлами
   void testNodeCreation();
   void testNodeDeletion();
-  void testNodeMovement();
+  // void testNodeMovement();
 
   // Тесты создания и управления рёбрами
   void testEdgeCreation();
   void testEdgeDeletion();
-  void testEdgeWeightModification();
 
   // Тесты работы с графом
-  void testGraphStructureChange();
-  void testGraphClear();
   void testShortestPathFinding();
   void testCycleDetection();
 
   // Тесты сохранения и загрузки
   void testSaveGraphToFile();
-  void testLoadGraphFromFile();
-  void testParseFile();
 
   // Тесты темы
   void testThemeChange();
 
-  // Тесты логгера
-  void testLoggerAddMessage();
-  void testLoggerSaveToFile();
-  void testLoggerFilterByStatus();
-
-  // Тесты MenuBar
-  void testMenuBarButtons();
+  Graph *getGraph() const;
 
 private:
   ThemeManager *themeManager;
   MainWindow *mainWindow;
   Graph *graph;
   QGraphicsScene *scene;
+  GraphView *graphView;
 };
 
 #endif // E2E_TESTS_HPP

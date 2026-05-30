@@ -34,6 +34,8 @@ public:
   void zoomIn();
   void zoomOut();
 
+  bool isEdgeCreationActive() const { return isCreatingEdge_; }
+
 signals:
   void nodeAdded(SmoothNode *node);
   void edgeAdded(SmoothEdge *edge);
@@ -80,7 +82,7 @@ private:
   void updateButtonsPosition();
   void showHelpDialog();
 
-private slots:
+public slots:
   void addFigure(const QPointF &pos);
   void setupNodeSelectionBridge();
 };

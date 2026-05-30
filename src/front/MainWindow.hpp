@@ -52,6 +52,8 @@ public:
    */
   MenuBar *getMenuBar() const { return menuBar_; }
 
+  Graph *getGraph() const { return graph_; }
+
 private:
   QGraphicsScene *scene_;          ///< Графическая сцена для отображения графа.
   GraphView *graphView_ = nullptr; ///< Виджет сцены (playground).
