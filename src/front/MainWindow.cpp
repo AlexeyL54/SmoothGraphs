@@ -1,4 +1,3 @@
-// MainWindow.cpp
 #include "MainWindow.hpp"
 #include "Figures.hpp"
 #include "MenuBar.hpp"
@@ -15,24 +14,66 @@
  * @param parent Родительский виджет (по умолчанию nullptr).
  */
 MainWindow::MainWindow(ThemeManager &themeMng, QWidget *parent)
-    : QWidget(parent), logger_(true), graph_(new Graph(&logger_)) {
+    : QWidget(parent), logger_(true), graph_(new Graph(&logger_)),
+      themeMng_(&themeMng) {
+  setupGraphicsView();
+  setupMenuBar();
+  setupConnections();
+  setupInitialGeometry();
+  updateStyle();
+}
 
-  themeMng_ = &themeMng;
-
+/**
+ * @brief Инициализирует графическую сцену и представление.
+ *
+ * Создает QGraphicsScene с предустановленной областью отображения,
+ * настраивает GraphView, включая антиалиасинг, режим перетаскивания
+ * и менеджер тем.
+ */
+void MainWindow::setupGraphicsView() {
   QGraphicsScene *scene = new QGraphicsScene(this);
   scene->setSceneRect(-200, -200, 400, 400);
 
   graphView_ = new GraphView(scene, this);
   graphView_->setRenderHint(QPainter::Antialiasing);
   graphView_->setDragMode(QGraphicsView::RubberBandDrag);
-  graphView_->setThemeManager(&themeMng);
-
-  menuBar_ = new MenuBar(this);
-
+  graphView_->setThemeManager(themeMng_);
   graphView_->setGeometry(0, 0, width(), height());
+}
+
+/**
+ * @brief Инициализирует меню-бар.
+ *
+ * Создает панель меню, устанавливает её начальное положение
+ * и поднимает над другими виджетами.
+ */
+void MainWindow::setupMenuBar() {
+  menuBar_ = new MenuBar(this);
   menuBar_->setGeometry(10, 10, width() - 20, menuBar_->maxHeight() + 40);
   menuBar_->raise();
+}
 
+/**
+ * @brief Настраивает соединения сигналов и слотов.
+ *
+ * Вызывает методы для настройки соединений, связанных с графом,
+ * UI компонентами и управлением темой.
+ */
+void MainWindow::setupConnections() {
+  setupGraphConnections();
+  setupUIComponentsConnections();
+  setupThemeConnections();
+}
+
+/**
+ * @brief Настраивает соединения для работы с графом.
+ *
+ * Подключает сигналы от GraphView (добавление/удаление узлов и рёбер,
+ * очистка сцены) к соответствующим методам Graph.
+ * Также подключает сигналы изменения структуры графа и обнаружения цикла.
+ */
+void MainWindow::setupGraphConnections() {
+  // Добавление узлов
   connect(graphView_, &GraphView::nodeAdded, this, [this](SmoothNode *node) {
     if (node) {
       graph_->addNode(node);
@@ -40,6 +81,7 @@ MainWindow::MainWindow(ThemeManager &themeMng, QWidget *parent)
     }
   });
 
+  // Добавление рёбер
   connect(graphView_, &GraphView::edgeAdded, this, [this](SmoothEdge *edge) {
     if (edge) {
       graph_->addEdge(edge);
@@ -47,6 +89,7 @@ MainWindow::MainWindow(ThemeManager &themeMng, QWidget *parent)
     }
   });
 
+  // Удаление узлов
   connect(graphView_, &GraphView::nodeRemoved, this, [this](SmoothNode *node) {
     if (node) {
       ID id = graph_->getNodeId(node);
@@ -57,6 +100,7 @@ MainWindow::MainWindow(ThemeManager &themeMng, QWidget *parent)
     }
   });
 
+  // Удаление рёбер
   connect(graphView_, &GraphView::edgeRemoved, this, [this](SmoothEdge *edge) {
     if (edge) {
       SmoothNode *start = edge->getStartNode();
@@ -72,6 +116,55 @@ MainWindow::MainWindow(ThemeManager &themeMng, QWidget *parent)
     }
   });
 
+  // Очистка сцены
+  connect(graphView_, &GraphView::sceneCleared, this,
+          [this]() { graph_->clear(); });
+
+  // Изменение структуры графа
+  connect(graph_, &Graph::graphStructureChanged, this,
+          &MainWindow::onGraphChanged);
+
+  // Обнаружение цикла
+  connect(graph_, &Graph::loopFound, this, &MainWindow::onLoopFound);
+}
+
+/**
+ * @brief Настраивает соединения для UI компонентов.
+ *
+ * Подключает сигналы от MenuBar и его кнопок к соответствующим слотам
+ * для сохранения/открытия графа, сохранения решения, поиска пути
+ * и очистки подсветки.
+ */
+void MainWindow::setupUIComponentsConnections() {
+  // Сохранение графа
+  connect(menuBar_, &MenuBar::saveGraphRequested, this,
+          &MainWindow::onSaveGraph);
+
+  // Сохранение решения
+  connect(menuBar_, &MenuBar::saveSolutionRequested, this,
+          &MainWindow::onSaveSolution);
+
+  // Открытие графа
+  connect(menuBar_->getOpenBtn(), &QPushButton::clicked, this,
+          &MainWindow::onOpenGraph);
+
+  // Поиск пути
+  connect(menuBar_->getRunBtn(), &QPushButton::clicked, this,
+          &MainWindow::onFindPath);
+
+  // Остановка подсветки пути
+  connect(menuBar_->getStopBtn(), &QPushButton::clicked, this,
+          &MainWindow::onStopPath);
+}
+
+/**
+ * @brief Настраивает соединения для обновления темы.
+ *
+ * Подключает сигналы от меню выбора темы для изменения текущей темы
+ * и сигнал ThemeManager о смене темы для обновления стиля интерфейса.
+ */
+void MainWindow::setupThemeConnections() {
+  // Смена темы через меню
   if (menuBar_->getThemeBtn() && menuBar_->getThemeBtn()->menu()) {
     connect(menuBar_->getThemeBtn()->menu(), &QMenu::triggered,
             [this](QAction *action) {
@@ -80,27 +173,23 @@ MainWindow::MainWindow(ThemeManager &themeMng, QWidget *parent)
             });
   }
 
-  connect(menuBar_, &MenuBar::saveGraphRequested, this,
-          &MainWindow::onSaveGraph);
-  connect(menuBar_, &MenuBar::saveSolutionRequested, this,
-          &MainWindow::onSaveSolution);
-
-  // Обычные кнопки остаются через clicked
-  connect(menuBar_->getOpenBtn(), &QPushButton::clicked, this,
-          &MainWindow::onOpenGraph);
-  connect(menuBar_->getRunBtn(), &QPushButton::clicked, this,
-          &MainWindow::onFindPath);
-  connect(menuBar_->getStopBtn(), &QPushButton::clicked, this,
-          &MainWindow::onStopPath);
+  // Обновление стиля при смене темы
   connect(themeMng_, &ThemeManager::themeChanged, this,
           &MainWindow::onThemeChanged);
-  connect(graph_, &Graph::graphStructureChanged, this,
-          &MainWindow::onGraphChanged);
-  connect(graphView_, &GraphView::sceneCleared, this,
-          [this]() { graph_->clear(); });
-  connect(graph_, &Graph::loopFound, this, &MainWindow::onLoopFound);
+}
 
-  updateStyle();
+/**
+ * @brief Инициализирует геометрию виджетов.
+ *
+ * Устанавливает начальные размеры и положение GraphView и MenuBar.
+ */
+void MainWindow::setupInitialGeometry() {
+  if (graphView_) {
+    graphView_->setGeometry(0, 0, width(), height());
+  }
+  if (menuBar_) {
+    menuBar_->setGeometry(10, 10, width() - 20, menuBar_->height());
+  }
 }
 
 /**
@@ -115,25 +204,10 @@ void MainWindow::onGraphChanged() {
 }
 
 /**
- * @brief Проверяет наличие кириллических символов в строке.
- * @param text Проверяемая строка.
- * @return true, если строка содержит символы кириллицы.
- */
-bool containsCyrillic(const QString &text) {
-  for (const QChar &ch : text) {
-    const ushort code = ch.unicode();
-    // Основной диапазон кириллицы + буквы Ё/ё
-    if ((code >= 0x0400 && code <= 0x04FF) || code == 0x0401 ||
-        code == 0x0451) {
-      return true;
-    }
-  }
-  return false;
-}
-
-/**
  * @brief Обрабатывает событие изменения размера окна.
  * @param event Событие изменения размера.
+ *
+ * Пересчитывает геометрию graphView_ и menuBar_ при изменении размеров окна.
  */
 void MainWindow::resizeEvent(QResizeEvent *event) {
   QWidget::resizeEvent(event);
@@ -147,6 +221,9 @@ void MainWindow::resizeEvent(QResizeEvent *event) {
 
 /**
  * @brief Слот для обновления интерфейса при смене темы.
+ *
+ * Вызывает updateStyle() для применения новой цветовой схемы
+ * ко всем элементам интерфейса.
  */
 void MainWindow::onThemeChanged() { updateStyle(); }
 
@@ -162,7 +239,6 @@ bool MainWindow::saveSolutionToFile(const QString &filepath) {
     return false;
   }
 
-  // Используем существующий метод saveToFile логгера
   int result = logger_.saveToFile(filepath);
 
   if (result >= 0) {
@@ -179,6 +255,10 @@ bool MainWindow::saveSolutionToFile(const QString &filepath) {
 
 /**
  * @brief Слот для сохранения решения (лога) в файл.
+ *
+ * Проверяет наличие актуального решения (hasValidPath_)
+ * и соответствие версии графа. Открывает диалог выбора файла
+ * и вызывает saveSolutionToFile().
  */
 void MainWindow::onSaveSolution() {
   // Было ли вообще найдено решение?
@@ -495,6 +575,9 @@ QString MainWindow::generateGraphViewStyleSheet() const {
 
 /**
  * @brief Обновляет цвета всех элементов графа согласно текущей теме.
+ *
+ * Получает текущие цвета темы и вызывает updateAllElementsTheme()
+ * у GraphView для обновления цветов всех узлов и рёбер.
  */
 void MainWindow::updateGraphColors() {
   if (!graphView_ || !graphView_->scene())
@@ -506,6 +589,9 @@ void MainWindow::updateGraphColors() {
 
 /**
  * @brief Обновляет стиль всего окна и дочерних элементов.
+ *
+ * Применяет текущую тему к глобальной таблице стилей приложения,
+ * а также к меню-бару и области графа. Вызывает обновление цветов графа.
  */
 void MainWindow::updateStyle() {
   qApp->setStyleSheet(generateGlobalStyleSheet());
@@ -537,6 +623,9 @@ void MainWindow::showNotification(const QString &message, bool isError) {
  * @brief Сохраняет текущий граф в файл.
  * @param filepath Путь к файлу для сохранения.
  * @return true, если сохранение прошло успешно, иначе false.
+ *
+ * Вызывает метод saveToFile у графа и отображает уведомление
+ * о результате операции.
  */
 bool MainWindow::saveGraphToFile(const QString &filepath) {
   QGraphicsScene *scene = graphView_->scene();
@@ -558,16 +647,18 @@ bool MainWindow::saveGraphToFile(const QString &filepath) {
  * @brief Загружает граф из файла.
  * @param filepath Путь к файлу для загрузки.
  * @return true, если загрузка прошла успешно, иначе false.
+ *
+ * Очищает текущее состояние сцены и графа, парсит файл,
+ * создаёт узлы и рёбра на основе данных из файла.
  */
-// MainWindow.cpp
 bool MainWindow::loadGraphFromFile(const QString &filepath) {
-  // 1. Очищаем текущее состояние
+  // Очищаем текущее состояние
   if (graphView_) {
-    graphView_->clearScene(); // Это удалит старые элементы визуально
+    graphView_->clearScene();
   }
-  graph_->clear(); // Это очистит внутренние данные Graph (nodes_, adjList_)
+  graph_->clear();
 
-  // 2. Парсим файл (только данные)
+  // Парсим файл
   std::vector<Graph::NodeData> nodesData;
   std::vector<Graph::EdgeData> edgesData;
 
@@ -576,11 +667,11 @@ bool MainWindow::loadGraphFromFile(const QString &filepath) {
     return false;
   }
 
-  // 3. Создаем Узлы (UI + Model)
+  // Создаем Узлы (UI + Model)
   std::unordered_map<ID, SmoothNode *> createdNodes;
   QGraphicsScene *scene = graphView_->scene();
 
-  for (const auto &ndata : nodesData) {
+  for (const Graph::NodeData &ndata : nodesData) {
     SmoothNode *node = new SmoothNode(ndata.x, ndata.y, 50);
 
     connect(node, &SmoothNode::nodeAboutToBeDeleted, graphView_,
@@ -591,8 +682,8 @@ bool MainWindow::loadGraphFromFile(const QString &filepath) {
     graph_->addNodeWithId(node, ndata.id);
   }
 
-  // 4. Создаем Ребра (UI + Model)
-  for (const auto &edata : edgesData) {
+  // Создаем Ребра (UI + Model)
+  for (const Graph::EdgeData &edata : edgesData) {
     auto itFrom = createdNodes.find(edata.from);
     auto itTo = createdNodes.find(edata.to);
 
@@ -615,7 +706,6 @@ bool MainWindow::loadGraphFromFile(const QString &filepath) {
     }
   }
 
-  // 5. Финализация
   updateGraphColors();
   showNotification(
       QString("Граф успешно загружен из файла:\n%1").arg(filepath));
@@ -625,15 +715,25 @@ bool MainWindow::loadGraphFromFile(const QString &filepath) {
 
 /**
  * @brief Слот для обработки обнаружения цикла в графе.
+ *
+ * Отображает предупреждение о необходимости отсутствия циклов
+ * перед поиском кратчайшего пути.
  */
 void MainWindow::onLoopFound() {
   QMessageBox::warning(this, "Предупреждение",
-                       "Перед поиском кратчайшего пути необхидимо убедиться, "
+                       "Перед поиском кратчайшего пути необходимо убедиться, "
                        "что в графе отсутствуют циклы!");
 }
 
 /**
  * @brief Выполняет поиск кратчайшего пути и визуализирует его.
+ *
+ * Использует выбранные стартовый и конечный узлы для поиска пути
+ * через модель Graph. При успешном нахождении вызывает подсветку пути.
+ *
+ * Проверяет, что стартовый и конечный узлы выбраны и не совпадают.
+ * При успешном поиске сохраняет revision графа и устанавливает флаг
+ * hasValidPath_ в true.
  */
 void MainWindow::findAndVisualizePath() {
   SmoothNode *startNode = graphView_->getStartNode();
@@ -676,6 +776,9 @@ void MainWindow::findAndVisualizePath() {
 
 /**
  * @brief Слот для сохранения графа в файл.
+ *
+ * Если у графа уже есть путь к файлу, сохраняет по нему.
+ * Иначе открывает диалог выбора файла и сохраняет граф.
  */
 void MainWindow::onSaveGraph() {
   QString filepath;
@@ -692,9 +795,6 @@ void MainWindow::onSaveGraph() {
   filepath = QFileDialog::getSaveFileName(this, "Сохранить граф", QString(),
                                           "Graph Files (*.gphz)");
 
-  // if (showCyrillicWarning(filepath))
-  // return;
-
   if (!filepath.isEmpty()) {
     if (!filepath.endsWith(".gphz", Qt::CaseInsensitive)) {
       filepath += ".gphz";
@@ -706,6 +806,9 @@ void MainWindow::onSaveGraph() {
 
 /**
  * @brief Слот для открытия графа из файла.
+ *
+ * Проверяет наличие несохранённых изменений.
+ * Открывает диалог выбора файла и загружает граф.
  */
 void MainWindow::onOpenGraph() {
   if (graph_->isModified() && !graph_->getCurrentFilePath().isEmpty()) {
@@ -725,10 +828,6 @@ void MainWindow::onOpenGraph() {
 
   QString filepath = QFileDialog::getOpenFileName(this, "Открыть граф", path,
                                                   "Graph Files (*.gphz)");
-
-  // if (showCyrillicWarning(filepath))
-  // return;
-
   if (!filepath.isEmpty()) {
     loadGraphFromFile(filepath);
     graphOpenFocusDir_ = QFileInfo(filepath).absolutePath();
@@ -737,11 +836,16 @@ void MainWindow::onOpenGraph() {
 
 /**
  * @brief Слот для запуска поиска кратчайшего пути.
+ *
+ * Вызывает findAndVisualizePath() для выполнения поиска
+ * и визуализации результата.
  */
 void MainWindow::onFindPath() { findAndVisualizePath(); }
 
 /**
  * @brief Слот для очистки подсветки пути.
+ *
+ * Вызывает clearPathHighlight() у GraphView и показывает уведомление.
  */
 void MainWindow::onStopPath() {
   graphView_->clearPathHighlight();

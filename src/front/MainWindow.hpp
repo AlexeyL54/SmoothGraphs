@@ -66,10 +66,43 @@ private:
   bool hasValidPath_ = false; ///< Флаг актуальности кратчайшего пути.
 
   QString graphOpenFocusDir_ = ""; ///< Последняя директория для открытия графа.
-  QString graphSaveFocusDir_ =
-      ""; ///< Последняя директория для сохранения графа.
-  QString solutionFocusDir_ =
-      ""; ///< Последняя директория для сохранения решения.
+  QString graphSaveFocusDir_ = ""; ///< Последняя директория сохранения графа.
+  QString solutionFocusDir_ = "";  ///< Последняя директория сохранения решения.
+                                   ///
+  /**
+   *@brief Инициализирует графическую сцену и представление.
+   */
+  void setupGraphicsView();
+
+  /**
+   * @brief Инициализирует меню-бар.
+   */
+  void setupMenuBar();
+
+  /**
+   * @brief Настраивает соединения сигналов и слотов.
+   */
+  void setupConnections();
+
+  /**
+   * @brief Настраивает соединения для работы с графом.
+   */
+  void setupGraphConnections();
+
+  /**
+   * @brief Настраивает соединения для UI компонентов.
+   */
+  void setupUIComponentsConnections();
+
+  /**
+   * @brief Настраивает соединения для обновления темы.
+   */
+  void setupThemeConnections();
+
+  /**
+   * @brief Инициализирует геометрию виджетов.
+   */
+  void setupInitialGeometry();
 
   /**
    * @brief Генерирует глобальную таблицу стилей приложения.
