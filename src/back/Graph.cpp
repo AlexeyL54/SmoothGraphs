@@ -6,26 +6,41 @@
 #include <algorithm>
 #include <limits>
 
+// ======================== КОНСТРУКТОР И ДЕСТРУКТОР ========================
+
 /**
  * @brief Конструктор класса Graph.
+ * @param logger Указатель на логгер для записи сообщений (опционально).
  */
 Graph::Graph(Logger *logger)
     : isModified_(false), nextNodeId_(1), logger_(logger), revision_(0) {}
+
 /**
  * @brief Деструктор класса Graph.
+ *
+ * Очищает все ресурсы графа.
  */
 Graph::~Graph() { clear(); }
 
+// ======================== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ========================
+
+/**
+ * @brief Уведомляет о изменении структуры графа.
+ *
+ * Увеличивает ревизию, устанавливает флаг модификации и генерирует сигнал.
+ */
 void Graph::notifyChange() {
   revision_++;
   isModified_ = true;
   emit graphStructureChanged();
 }
 
+// ======================== УПРАВЛЕНИЕ УЗЛАМИ ========================
+
 /**
  * @brief Добавляет узел в граф.
  * @param node Указатель на добавляемый узел.
- * @return ID присвоенный узлу.
+ * @return ID присвоенный узлу, или 0 если ошибка.
  */
 ID Graph::addNode(SmoothNode *node) {
   if (!node)
@@ -81,6 +96,8 @@ ID Graph::addNodeWithId(SmoothNode *node, ID id) {
 
   return id;
 }
+
+// ======================== УПРАВЛЕНИЕ РЁБРАМИ ========================
 
 /**
  * @brief Добавляет ребро в граф.
@@ -201,6 +218,8 @@ void Graph::deleteEdge(ID from, ID to) {
   }
 }
 
+// ======================== ОЧИСТКА ГРАФА ========================
+
 /**
  * @brief Очищает граф (удаляет все узлы и рёбра).
  */
@@ -213,6 +232,8 @@ void Graph::clear() {
   notifyChange();
   qDebug() << "Graph cleared";
 }
+
+// ======================== ПОЛУЧЕНИЕ ДАННЫХ ГРАФА ========================
 
 /**
  * @brief Возвращает список всех узлов графа.
@@ -263,6 +284,60 @@ ID Graph::getNodeId(SmoothNode *node) const {
   }
   return 0;
 }
+
+// ======================== РАБОТА С ФАЙЛАМИ ========================
+
+/**
+ * @brief Сохраняет граф в файл.
+ * @param filepath Путь к файлу для сохранения.
+ * @return true если сохранение успешно, false в противном случае.
+ */
+bool Graph::saveToFile(const QString &filepath) {
+  Graphviz gv;
+  bool success = gv.saveToFile(filepath, getNodes(), getEdges());
+
+  if (success) {
+    currentFilePath_ = filepath;
+    isModified_ = false;
+    qDebug() << "Graph saved to:" << filepath;
+  } else {
+    qDebug() << "Failed to save graph to:" << filepath;
+  }
+
+  return success;
+}
+
+/**
+ * @brief Парсит файл и возвращает данные графа.
+ *
+ * Не создает визуальные элементы, только извлекает данные.
+ * @param filepath Путь к файлу для парсинга.
+ * @param nodes Вектор для заполнения данными узлов.
+ * @param edges Вектор для заполнения данными рёбер.
+ * @return true если парсинг успешен, false в противном случае.
+ */
+bool Graph::parseFile(const QString &filepath, std::vector<NodeData> &nodes,
+                      std::vector<EdgeData> &edges) {
+  Graphviz gv;
+
+  std::vector<std::tuple<ID, double, double>> nodesData;
+  std::vector<std::tuple<ID, ID, float>> edgesData;
+
+  if (!gv.loadFromFile(filepath, nodesData, edgesData)) {
+    return false;
+  }
+
+  for (const auto &n : nodesData) {
+    nodes.push_back({std::get<0>(n), std::get<1>(n), std::get<2>(n)});
+  }
+  for (const auto &e : edgesData) {
+    edges.push_back({std::get<0>(e), std::get<1>(e), std::get<2>(e)});
+  }
+
+  return true;
+}
+
+// ======================== МЕТОДЫ ЗАГРУЗКИ ГРАФА ========================
 
 /**
  * @brief Создаёт узлы на сцене из загруженных данных.
@@ -336,7 +411,6 @@ void Graph::createEdgesFromData(
       toIt->second->addIncomingEdge(edge);
 
       adjList_[from].push_back(to);
-      // edgeWeights_[from][to] = weight;
 
       qDebug() << "Created edge:" << from << "->" << to << "weight:" << weight;
     } else {
@@ -346,55 +420,23 @@ void Graph::createEdgesFromData(
   }
 }
 
+// ======================== ТОПОЛОГИЧЕСКАЯ СОРТИРОВКА ========================
+
 /**
- * @brief Сохраняет граф в файл.
- * @param filepath Путь к файлу для сохранения.
- * @return true если сохранение успешно, false в противном случае.
+ * @brief Вспомогательная функция для топологической сортировки и проверки на
+ * ацикличность.
+ *
+ * @param node Текущий узел для обработки.
+ * @param state Состояние узлов (0=не посещён, 1=в обработке, 2=обработан).
+ * @param stack Стек для хранения топологического порядка.
+ * @param logger Логгер для записи сообщений.
+ * @return true если обнаружен цикл, false в противном случае.
  */
-bool Graph::saveToFile(const QString &filepath) {
-  Graphviz gv;
-  bool success = gv.saveToFile(filepath, getNodes(), getEdges());
-
-  if (success) {
-    currentFilePath_ = filepath;
-    isModified_ = false;
-    qDebug() << "Graph saved to:" << filepath;
-  } else {
-    qDebug() << "Failed to save graph to:" << filepath;
-  }
-
-  return success;
-}
-
-bool Graph::parseFile(const QString &filepath, std::vector<NodeData> &nodes,
-                      std::vector<EdgeData> &edges) {
-  Graphviz gv;
-
-  std::vector<std::tuple<ID, double, double>> nodesData;
-  std::vector<std::tuple<ID, ID, float>> edgesData;
-
-  if (!gv.loadFromFile(filepath, nodesData, edgesData)) {
-    return false;
-  }
-
-  for (const auto &n : nodesData) {
-    nodes.push_back({std::get<0>(n), std::get<1>(n), std::get<2>(n)});
-  }
-  for (const auto &e : edgesData) {
-    edges.push_back({std::get<0>(e), std::get<1>(e), std::get<2>(e)});
-  }
-
-  return true;
-}
-
-// Вспомогательная функция для топологической сортировки и проверки на
-// ацикличность Возвращает true, если цикл обнаружен
-static bool
-topologicalSortUtil(SmoothNode *node,
-                    std::unordered_map<SmoothNode *, int>
-                        &state, // 0: unvisited, 1: visiting, 2: visited
-                    std::vector<SmoothNode *> &stack, Logger *logger) {
-  state[node] = 1; // Mark as visiting
+static bool topologicalSortUtil(SmoothNode *node,
+                                std::unordered_map<SmoothNode *, int> &state,
+                                std::vector<SmoothNode *> &stack,
+                                Logger *logger) {
+  state[node] = 1; // Отмечаем узел как "в обработке"
 
   if (logger) {
     logger->addMessage(
@@ -416,7 +458,7 @@ topologicalSortUtil(SmoothNode *node,
                        .arg(node->getId())
                        .arg(neighbor->getId()));
       }
-      return true; // Cycle detected
+      return true; // Цикл обнаружен
     }
 
     // Если сосед еще не посещен, рекурсивно обрабатываем его
@@ -430,12 +472,12 @@ topologicalSortUtil(SmoothNode *node,
       }
 
       if (topologicalSortUtil(neighbor, state, stack, logger)) {
-        return true; // Propagate cycle detection
+        return true;
       }
     }
   }
 
-  state[node] = 2; // Mark as visited
+  state[node] = 2; // Отмечаем узел как "обработан"
   stack.push_back(node);
 
   if (logger) {
@@ -445,15 +487,20 @@ topologicalSortUtil(SmoothNode *node,
             .arg(node->getId()));
   }
 
-  return false; // No cycle found in this branch
+  return false;
 }
 
-// Получение топологически отсортированного списка узлов
-// Возвращает пустой вектор, если граф содержит циклы
+/**
+ * @brief Получение топологически отсортированного списка узлов.
+ *
+ * @param allNodes Все узлы графа.
+ * @param logger Логгер для записи сообщений.
+ * @return Вектор узлов в топологическом порядке или пустой вектор, если граф
+ * содержит циклы.
+ */
 static std::vector<SmoothNode *>
 getTopologicalOrder(const std::vector<SmoothNode *> &allNodes, Logger *logger) {
-  std::unordered_map<SmoothNode *, int>
-      state; // 0: unvisited, 1: visiting, 2: visited
+  std::unordered_map<SmoothNode *, int> state;
   std::vector<SmoothNode *> stack;
 
   if (logger) {
@@ -463,10 +510,12 @@ getTopologicalOrder(const std::vector<SmoothNode *> &allNodes, Logger *logger) {
                        QString("Всего узлов в графе: %1").arg(allNodes.size()));
   }
 
+  // Инициализируем состояние всех узлов
   for (SmoothNode *node : allNodes) {
-    state[node] = 0; // Initialize all nodes as unvisited
+    state[node] = 0; // 0 = не посещён
   }
 
+  // Запускаем DFS для каждого непосещённого узла
   for (SmoothNode *node : allNodes) {
     if (state[node] == 0) {
       if (logger) {
@@ -474,14 +523,13 @@ getTopologicalOrder(const std::vector<SmoothNode *> &allNodes, Logger *logger) {
             INFO, QString("Запускаем DFS с узла ID: %1").arg(node->getId()));
       }
 
-      // If cycle is detected, return empty vector
       if (topologicalSortUtil(node, state, stack, logger)) {
         if (logger) {
           logger->addMessage(
               ERROR,
               "Граф содержит циклы. Топологическая сортировка невозможна.");
         }
-        return {};
+        return {}; // Обнаружен цикл
       }
     }
   }
@@ -500,119 +548,260 @@ getTopologicalOrder(const std::vector<SmoothNode *> &allNodes, Logger *logger) {
   return stack;
 }
 
+// ======================== ПОИСК КРАТЧАЙШЕГО ПУТИ ========================
+
+/**
+ * @brief Находит кратчайший путь между двумя узлами.
+ *
+ * Использует алгоритм динамического программирования на DAG (Directed Acyclic
+ * Graph). Требует, чтобы граф был ациклическим. В случае обнаружения цикла
+ * генерируется сигнал loopFound() и возвращается пустой путь.
+ *
+ * @param from Начальный узел.
+ * @param to Конечный узел.
+ * @return Вектор узлов, составляющих кратчайший путь, или пустой вектор если
+ * путь не найден.
+ */
 std::vector<SmoothNode *> Graph::findShortestPath(SmoothNode *from,
                                                   SmoothNode *to) {
-  // Очищаем логгер перед новым поиском
+  clearAndStartLogging();
+  logPathStart(from, to);
+
+  if (!validateNodes(from, to)) {
+    return {};
+  }
+
+  if (isSameNode(from, to)) {
+    logSameNodePath(from);
+    return {from};
+  }
+
+  // Получаем топологический порядок (проверяем на циклы)
+  std::vector<SmoothNode *> topoOrder;
+  if (!isDag(topoOrder)) {
+    return {};
+  }
+
+  // Инициализация DP структур
+  std::unordered_map<SmoothNode *, float> dist;
+  std::unordered_map<SmoothNode *, SmoothNode *> nextNode;
+
+  if (!initializeDistanceMaps(topoOrder, to, dist, nextNode)) {
+    return {};
+  }
+
+  // Обратный проход DP
+  processTopologicalOrder(topoOrder, dist, nextNode);
+
+  // Проверяем достижимость цели
+  if (!isReachable(from, dist)) {
+    logUnreachablePath(from, to);
+    return {};
+  }
+
+  // Восстанавливаем путь
+  float totalWeight = 0.0f;
+  std::vector<SmoothNode *> path =
+      reconstructPath(from, to, nextNode, totalWeight);
+
+  if (path.empty() || path.back() != to) {
+    logPathError("Ошибка при восстановлении пути");
+    return {};
+  }
+
+  logPathSuccess(dist[from], path, totalWeight);
+  return path;
+}
+
+/**
+ * @brief Очищает логгер и добавляет заголовок поиска.
+ */
+void Graph::clearAndStartLogging() {
   if (logger_) {
     logger_->clear();
     logger_->addMessage(INFO, "=== НАЧАЛО ПОИСКА КРАТЧАЙШЕГО ПУТИ ===");
   }
+}
 
-  if (!from || !to) {
-    if (logger_) {
-      logger_->addMessage(ERROR,
-                          "Ошибка: начальный или конечный узел не определён");
-      logger_->addMessage(INFO, "=== КОНЕЦ ПОИСКА (ОШИБКА) ===");
-    }
-    return {};
+/**
+ * @brief Логирует начало поиска пути.
+ * @param from Начальный узел.
+ * @param to Конечный узел.
+ */
+void Graph::logPathStart(SmoothNode *from, SmoothNode *to) const {
+  if (!logger_)
+    return;
+
+  logger_->addMessage(INFO,
+                      QString("Стартовый узел: ID %1").arg(from->getId()));
+  logger_->addMessage(INFO, QString("Целевой узел: ID %1").arg(to->getId()));
+}
+
+/**
+ * @brief Логирует успешное нахождение пути.
+ * @param distance Найденное расстояние.
+ * @param path Найденный путь.
+ * @param totalWeight Общий вес пути.
+ */
+void Graph::logPathSuccess(float distance,
+                           const std::vector<SmoothNode *> &path,
+                           float totalWeight) const {
+  if (!logger_)
+    return;
+
+  logger_->addMessage(SUCCESS,
+                      QString("Кратчайшее расстояние: %1").arg(distance));
+  logger_->addMessage(
+      SUCCESS, QString("Путь найден! Количество узлов: %1, общий вес: %2")
+                   .arg(path.size())
+                   .arg(totalWeight));
+
+  QString pathStr = "Путь: ";
+  for (size_t i = 0; i < path.size(); ++i) {
+    if (i > 0)
+      pathStr += " -> ";
+    pathStr += QString::number(path[i]->getId());
   }
+  logger_->addMessage(INFO, pathStr);
+  logger_->addMessage(INFO, "=== КОНЕЦ ПОИСКА (УСПЕХ) ===");
+}
 
+/**
+ * @brief Логирует ошибку поиска пути.
+ * @param error Текст ошибки.
+ */
+void Graph::logPathError(const QString &error) const {
   if (logger_) {
-    logger_->addMessage(INFO,
-                        QString("Стартовый узел: ID %1").arg(from->getId()));
-    logger_->addMessage(INFO, QString("Целевой узел: ID %1").arg(to->getId()));
+    logger_->addMessage(ERROR, error);
+    logger_->addMessage(INFO, "=== КОНЕЦ ПОИСКА (ОШИБКА) ===");
   }
+}
 
-  if (from == to) {
-    if (logger_) {
-      logger_->addMessage(
-          SUCCESS, "Стартовый и конечный узлы совпадают. Путь найден: [0]");
-      logger_->addMessage(INFO, "=== КОНЕЦ ПОИСКА (УСПЕХ) ===");
-    }
-    return {from};
+/**
+ * @brief Проверяет валидность начального и конечного узлов.
+ * @param from Начальный узел.
+ * @param to Конечный узел.
+ * @return true если оба узла существуют, false в противном случае.
+ */
+bool Graph::validateNodes(SmoothNode *from, SmoothNode *to) const {
+  if (!from || !to) {
+    logPathError("Ошибка: начальный или конечный узел не определён");
+    return false;
   }
+  return true;
+}
 
-  // 1. Получаем все узлы графа
-  std::vector<SmoothNode *> allNodes = getNodes();
+/**
+ * @brief Проверяет, совпадают ли начальный и конечный узлы.
+ * @param from Начальный узел.
+ * @param to Конечный узел.
+ * @return true если узлы совпадают.
+ */
+bool Graph::isSameNode(SmoothNode *from, SmoothNode *to) const {
+  return from == to;
+}
+
+/**
+ * @brief Логирует случай, когда начальный и конечный узлы совпадают.
+ * @param node Узел.
+ */
+void Graph::logSameNodePath(SmoothNode *node) const {
   if (logger_) {
     logger_->addMessage(
-        INFO, QString("Получено узлов для обработки: %1").arg(allNodes.size()));
+        SUCCESS, "Стартовый и конечный узлы совпадают. Путь найден: [0]");
+    logger_->addMessage(INFO, "=== КОНЕЦ ПОИСКА (УСПЕХ) ===");
   }
+}
 
-  // 2. Топологическая сортировка
+/**
+ * @brief Проверяет, является ли граф ациклическим (DAG) и получает
+ * топологический порядок.
+ * @param topoOrder Выходной параметр: вектор узлов в топологическом порядке.
+ * @return true если граф ациклический, false если содержит циклы.
+ */
+bool Graph::isDag(std::vector<SmoothNode *> &topoOrder) const {
+  std::vector<SmoothNode *> allNodes = getNodes();
+
   if (logger_) {
     logger_->addMessage(INFO, "Проверка графа на ацикличность...");
+    logger_->addMessage(INFO,
+                        QString("Получено узлов: %1").arg(allNodes.size()));
   }
-  std::vector<SmoothNode *> topoOrder = getTopologicalOrder(allNodes, logger_);
+
+  topoOrder = getTopologicalOrder(allNodes, logger_);
+
   if (topoOrder.empty() && !allNodes.empty()) {
-    if (logger_) {
-      logger_->addMessage(ERROR,
-                          "Поиск пути прерван: Граф содержит циклы. Алгоритм "
-                          "применим только для ациклических графов (DAG).");
-      logger_->addMessage(INFO, "=== КОНЕЦ ПОИСКА (ОШИБКА: ЦИКЛ) ===");
-    }
-    emit loopFound();
-    return {};
+    logPathError("Граф содержит циклы. Алгоритм применим только для DAG");
+    emit const_cast<Graph *>(this)->loopFound();
+    return false;
   }
 
-  // 3. Инициализация структур данных для обратного прохода
-  std::unordered_map<SmoothNode *, float> dist;
-  std::unordered_map<SmoothNode *, SmoothNode *> nextNode;
+  if (logger_) {
+    logger_->addMessage(SUCCESS, "Граф ациклический, можно применять DP");
+  }
+  return true;
+}
 
+/**
+ * @brief Инициализирует структуры расстояний для DP.
+ * @param nodes Все узлы графа.
+ * @param target Целевой узел (конечная точка пути).
+ * @param dist Карта расстояний (выходной параметр).
+ * @param nextNode Карта для восстановления пути (выходной параметр).
+ * @return true если инициализация успешна.
+ */
+bool Graph::initializeDistanceMaps(
+    const std::vector<SmoothNode *> &nodes, SmoothNode *target,
+    std::unordered_map<SmoothNode *, float> &dist,
+    std::unordered_map<SmoothNode *, SmoothNode *> &nextNode) const {
   const float INF = std::numeric_limits<float>::max();
 
-  for (SmoothNode *node : allNodes) {
+  for (SmoothNode *node : nodes) {
     dist[node] = INF;
     nextNode[node] = nullptr;
   }
 
-  dist[to] = 0.0f;
+  dist[target] = 0.0f;
+
   if (logger_) {
-    logger_->addMessage(
-        INFO, QString("Инициализация: dist[ID %1] = 0").arg(to->getId()));
+    logger_->addMessage(INFO, "Инициализация DP структур");
+    logger_->addMessage(INFO, QString("dist[ID %1] = 0").arg(target->getId()));
   }
 
-  // 4. Обратный проход ДП
+  return true;
+}
+
+/**
+ * @brief Обрабатывает топологический порядок для вычисления кратчайших
+ * расстояний.
+ * @param topoOrder Вектор узлов в топологическом порядке.
+ * @param dist Карта расстояний (обновляется).
+ * @param nextNode Карта для восстановления пути (обновляется).
+ */
+void Graph::processTopologicalOrder(
+    const std::vector<SmoothNode *> &topoOrder,
+    std::unordered_map<SmoothNode *, float> &dist,
+    std::unordered_map<SmoothNode *, SmoothNode *> &nextNode) const {
   if (logger_) {
-    logger_->addMessage(INFO, "Начинаем обратный проход...");
+    logger_->addMessage(INFO, "Начинаем обратный проход (DP)...");
   }
+
   int processedCount = 0;
 
-  for (SmoothNode *u : topoOrder) {
-    if (dist[u] == INF) {
+  for (SmoothNode *node : topoOrder) {
+    if (dist[node] == std::numeric_limits<float>::max()) {
       continue;
     }
 
     processedCount++;
     if (logger_) {
-      logger_->addMessage(
-          INFO, QString("Обрабатываем узел ID: %1 (расстояние до цели: %2)")
-                    .arg(u->getId())
-                    .arg(dist[u] == INF ? "∞" : QString::number(dist[u])));
+      logger_->addMessage(INFO,
+                          QString("Обработка узла ID: %1 (расст. до цели: %2)")
+                              .arg(node->getId())
+                              .arg(dist[node]));
     }
 
-    // Рассматриваем все входящие ребра в u: (v -> u)
-    for (SmoothEdge *inEdge : u->getIncomingEdges()) {
-      SmoothNode *v = inEdge->getStartNode();
-      float weight = inEdge->getWeight();
-
-      if (dist[v] > weight + dist[u]) {
-        float oldDist = dist[v];
-        dist[v] = weight + dist[u];
-        nextNode[v] = u;
-
-        if (logger_) {
-          logger_->addMessage(
-              INFO, QString("  Обновление пути к узлу ID %1: %2 -> %3 (через "
-                            "ID %4, вес ребра: %5)")
-                        .arg(v->getId())
-                        .arg(oldDist == INF ? "∞" : QString::number(oldDist))
-                        .arg(QString::number(dist[v]))
-                        .arg(u->getId())
-                        .arg(weight));
-        }
-      }
-    }
+    processNodeInReverse(node, dist, nextNode);
   }
 
   if (logger_) {
@@ -620,92 +809,138 @@ std::vector<SmoothNode *> Graph::findShortestPath(SmoothNode *from,
                                   .arg(processedCount)
                                   .arg(topoOrder.size()));
   }
+}
 
-  // 5. Проверка достижимости
-  if (dist[from] == INF) {
-    if (logger_) {
-      logger_->addMessage(ERROR,
-                          QString("Путь от узла ID %1 до узла ID %2 не найден!")
-                              .arg(from->getId())
-                              .arg(to->getId()));
-      logger_->addMessage(INFO, "=== КОНЕЦ ПОИСКА (ПУТЬ НЕ НАЙДЕН) ===");
+/**
+ * @brief Обрабатывает один узел при обратном проходе DP.
+ * @param node Текущий обрабатываемый узел.
+ * @param dist Карта расстояний (обновляется).
+ * @param nextNode Карта для восстановления пути (обновляется).
+ */
+void Graph::processNodeInReverse(
+    SmoothNode *node, std::unordered_map<SmoothNode *, float> &dist,
+    std::unordered_map<SmoothNode *, SmoothNode *> &nextNode) const {
+  // Рассматриваем все входящие ребра: prev -> node
+  for (SmoothEdge *inEdge : node->getIncomingEdges()) {
+    SmoothNode *prev = inEdge->getStartNode();
+    float weight = inEdge->getWeight();
+    float newDistance = weight + dist[node];
+
+    if (dist[prev] > newDistance) {
+      float oldDistance = dist[prev];
+      dist[prev] = newDistance;
+      nextNode[prev] = node;
+
+      if (logger_) {
+        logger_->addMessage(
+            INFO, QString("  Обновление пути к узлу ID %1: %2 -> %3 (через ID "
+                          "%4, вес: %5)")
+                      .arg(prev->getId())
+                      .arg(oldDistance == std::numeric_limits<float>::max()
+                               ? "∞"
+                               : QString::number(oldDistance))
+                      .arg(newDistance)
+                      .arg(node->getId())
+                      .arg(weight));
+      }
     }
-    return {};
   }
+}
 
+/**
+ * @brief Проверяет, достижим ли целевой узел из начального.
+ * @param from Начальный узел.
+ * @param dist Карта расстояний.
+ * @return true если узел достижим.
+ */
+bool Graph::isReachable(
+    SmoothNode *from,
+    const std::unordered_map<SmoothNode *, float> &dist) const {
+  return dist.at(from) != std::numeric_limits<float>::max();
+}
+
+/**
+ * @brief Логирует недостижимость целевого узла.
+ * @param from Начальный узел.
+ * @param to Конечный узел.
+ */
+void Graph::logUnreachablePath(SmoothNode *from, SmoothNode *to) const {
   if (logger_) {
-    logger_->addMessage(SUCCESS,
-                        QString("Кратчайшее расстояние от ID %1 до ID %2: %3")
+    logger_->addMessage(ERROR,
+                        QString("Путь от узла ID %1 до узла ID %2 не найден!")
                             .arg(from->getId())
-                            .arg(to->getId())
-                            .arg(dist[from]));
+                            .arg(to->getId()));
+    logger_->addMessage(INFO, "=== КОНЕЦ ПОИСКА (ПУТЬ НЕ НАЙДЕН) ===");
   }
+}
 
-  // 6. Прямой проход: восстановление пути от from к to
+/**
+ * @brief Восстанавливает путь по карте nextNode.
+ * @param from Начальный узел.
+ * @param to Конечный узел.
+ * @param nextNode Карта, указывающая следующий узел на пути.
+ * @param totalWeight Выходной параметр: общий вес восстановленного пути.
+ * @return Вектор узлов, составляющих путь.
+ */
+std::vector<SmoothNode *> Graph::reconstructPath(
+    SmoothNode *from, SmoothNode *to,
+    const std::unordered_map<SmoothNode *, SmoothNode *> &nextNode,
+    float &totalWeight) const {
   if (logger_) {
     logger_->addMessage(INFO, "Восстанавливаем путь...");
   }
+
   std::vector<SmoothNode *> path;
   SmoothNode *current = from;
-  float totalWeight = 0.0f;
+  totalWeight = 0.0f;
 
   while (current != nullptr) {
     path.push_back(current);
+
     if (logger_) {
       logger_->addMessage(
-          INFO,
-          QString("  Добавляем в путь узел ID: %1").arg(current->getId()));
+          INFO, QString("  Добавлен узел ID: %1").arg(current->getId()));
     }
 
     if (current == to) {
       break;
     }
 
-    SmoothNode *next = nextNode[current];
+    auto it = nextNode.find(current);
+    if (it == nextNode.end()) {
+      break;
+    }
+
+    SmoothNode *next = it->second;
     if (next) {
-      // Находим вес ребра для отображения
-      for (SmoothEdge *edge : current->getOutcomingEdges()) {
-        if (edge->getEndNode() == next) {
-          totalWeight += edge->getWeight();
-          if (logger_) {
-            logger_->addMessage(INFO,
-                                QString("    Ребро ID %1 -> ID %2 (вес: %3)")
-                                    .arg(current->getId())
-                                    .arg(next->getId())
-                                    .arg(edge->getWeight()));
-          }
-          break;
-        }
+      float weight = getEdgeWeight(current, next);
+      totalWeight += weight;
+
+      if (logger_) {
+        logger_->addMessage(INFO, QString("    Ребро ID %1 -> ID %2 (вес: %3)")
+                                      .arg(current->getId())
+                                      .arg(next->getId())
+                                      .arg(weight));
       }
     }
+
     current = next;
   }
 
-  // Если путь не завершился в to, возвращаем пустой вектор
-  if (path.back() != to) {
-    if (logger_) {
-      logger_->addMessage(ERROR, "Ошибка при восстановлении пути!");
-      logger_->addMessage(INFO, "=== КОНЕЦ ПОИСКА (ОШИБКА) ===");
-    }
-    return {};
-  }
-
-  if (logger_) {
-    logger_->addMessage(
-        SUCCESS,
-        QString("Путь найден! Количество узлов в пути: %1, общий вес: %2")
-            .arg(path.size())
-            .arg(totalWeight));
-
-    QString pathStr = "Путь: ";
-    for (size_t i = 0; i < path.size(); ++i) {
-      if (i > 0)
-        pathStr += " -> ";
-      pathStr += QString::number(path[i]->getId());
-    }
-    logger_->addMessage(INFO, pathStr);
-    logger_->addMessage(INFO, "=== КОНЕЦ ПОИСКА (УСПЕХ) ===");
-  }
-
   return path;
+}
+
+/**
+ * @brief Получает вес ребра между двумя узлами.
+ * @param from Начальный узел ребра.
+ * @param to Конечный узел ребра.
+ * @return Вес ребра или 0, если ребро не найдено.
+ */
+float Graph::getEdgeWeight(SmoothNode *from, SmoothNode *to) const {
+  for (SmoothEdge *edge : from->getOutcomingEdges()) {
+    if (edge->getEndNode() == to) {
+      return edge->getWeight();
+    }
+  }
+  return 0.0f;
 }
