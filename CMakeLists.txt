@@ -26,6 +26,7 @@ set(SOURCES
     src/front/Figures.cpp
     src/front/MenuBar.cpp
     src/front/ThemeManager.cpp
+    src/front/StyleManager.cpp
     src/back/Graph.cpp
     src/back/Graphviz.cpp
     src/back/Logger.cpp
@@ -37,6 +38,7 @@ set(HEADERS
     src/front/Figures.hpp
     src/front/MenuBar.hpp
     src/front/ThemeManager.hpp
+    src/front/StyleManager.hpp
     src/back/Graph.hpp
     src/back/Graphviz.hpp
     src/back/Logger.hpp

@@ -105,24 +105,6 @@ private:
   void setupInitialGeometry();
 
   /**
-   * @brief Генерирует глобальную таблицу стилей приложения.
-   * @return QString Строка CSS со стилями для всех виджетов.
-   */
-  QString generateGlobalStyleSheet() const;
-
-  /**
-   * @brief Генерирует таблицу стилей для панели меню.
-   * @return QString Строка CSS со стилями для меню-бара.
-   */
-  QString generateMenuBarStyleSheet() const;
-
-  /**
-   * @brief Генерирует таблицу стилей для области отображения графа.
-   * @return QString Строка CSS со стилями для QGraphicsView.
-   */
-  QString generateGraphViewStyleSheet() const;
-
-  /**
    * @brief Обновляет цвета всех элементов графа согласно текущей теме.
    */
   void updateGraphColors();

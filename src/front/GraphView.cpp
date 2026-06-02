@@ -1,7 +1,7 @@
 #include "GraphView.hpp"
 #include "Figures.hpp"
 #include "HelpText.hpp"
-#include "qpoint.h"
+#include "StyleManager.hpp"
 
 #include <QMenu>
 #include <QMessageBox>
@@ -31,22 +31,7 @@ void GraphView::setupZoomButtons() {
   zoomInBtn_->setFixedSize(40, 40);
   zoomOutBtn_->setFixedSize(40, 40);
 
-  QString btnStyle = R"(
-    QPushButton {
-      background-color: rgba(60, 60, 70, 200);
-      color: white;
-      border: none;
-      border-radius: 20px;
-      font-size: 20px;
-      font-weight: bold;
-    }
-    QPushButton:hover {
-      background-color: rgba(80, 80, 100, 220);
-    }
-    QPushButton:pressed {
-      background-color: rgba(50, 50, 60, 220);
-    }
-  )";
+  QString btnStyle = StyleManager::generateFloatingButtonsStyleSheet();
 
   zoomInBtn_->setStyleSheet(btnStyle);
   zoomOutBtn_->setStyleSheet(btnStyle);
@@ -64,22 +49,7 @@ void GraphView::setupZoomButtons() {
 void GraphView::setupHelpButton() {
   helpBtn_ = new QPushButton("?", this);
   helpBtn_->setFixedSize(40, 40);
-  helpBtn_->setStyleSheet(R"(
-    QPushButton {
-      background-color: rgba(60, 60, 70, 200);
-      color: white;
-      border: none;
-      border-radius: 20px;
-      font-size: 22px;
-      font-weight: bold;
-    }
-    QPushButton:hover {
-      background-color: rgba(80, 80, 100, 220);
-    }
-    QPushButton:pressed {
-      background-color: rgba(50, 50, 60, 220);
-    }
-  )");
+  helpBtn_->setStyleSheet(StyleManager::generateFloatingButtonsStyleSheet());
 
   connect(helpBtn_, &QPushButton::clicked, this, &GraphView::showHelpDialog);
   helpBtn_->raise();
@@ -98,32 +68,7 @@ void GraphView::showHelpDialog() {
 
   if (themeMng_) {
     ThemeColors colors = themeMng_->getThemeColors();
-    QString styleSheet = QString(R"(
-      QMessageBox {
-        background-color: %1;
-        color: %2;
-      }
-      QMessageBox QPushButton {
-        background-color: %3;
-        color: %2;
-        border: none;
-        border-radius: 6px;
-        padding: 8px 20px;
-        font-size: 13px;
-      }
-      QMessageBox QPushButton:hover {
-        background-color: %4;
-      }
-      QLabel {
-        color: %2;
-      }
-    )")
-                             .arg(colors.background.name())
-                             .arg(colors.textPrimary.name())
-                             .arg(colors.primary.name())
-                             .arg(colors.hover.name());
-
-    msgBox->setStyleSheet(styleSheet);
+    msgBox->setStyleSheet(StyleManager::generateHelpDialogStyleSheet(colors));
   }
 
   msgBox->exec();
@@ -266,28 +211,6 @@ void GraphView::updateAllElementsTheme(const ThemeColors &colors) {
     if (edge) {
       edge->updateThemeStyle(colors);
     }
-  }
-
-  if (zoomInBtn_ && zoomOutBtn_ && helpBtn_) {
-    QString btnStyle = R"(
-      QPushButton {
-        background-color: rgba(60, 60, 70, 200);
-        color: white;
-        border: none;
-        border-radius: 20px;
-        font-weight: bold;
-      }
-      QPushButton:hover {
-        background-color: rgba(80, 80, 100, 220);
-      }
-      QPushButton:pressed {
-        background-color: rgba(50, 50, 60, 220);
-      }
-    )";
-
-    zoomInBtn_->setStyleSheet(btnStyle);
-    zoomOutBtn_->setStyleSheet(btnStyle);
-    helpBtn_->setStyleSheet(btnStyle);
   }
 }
 
