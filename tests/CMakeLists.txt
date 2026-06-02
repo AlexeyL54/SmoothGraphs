@@ -28,6 +28,7 @@ set(PROJECT_SOURCES
     ../src/front/Figures.cpp
     ../src/front/MenuBar.cpp
     ../src/front/ThemeManager.cpp
+    ../src/front/StyleManager.cpp
     ../src/back/Graph.cpp
     ../src/back/Graphviz.cpp
     ../src/back/Logger.cpp
