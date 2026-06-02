@@ -1,4 +1,3 @@
-// GraphView.cpp
 #include "GraphView.hpp"
 #include "Figures.hpp"
 #include "HelpText.hpp"
@@ -8,15 +7,23 @@
 #include <QMessageBox>
 #include <QVBoxLayout>
 
+/**
+ * @brief Конструктор класса GraphView
+ * @param scene Указатель на графическую сцену
+ * @param parent Родительский виджет (по умолчанию nullptr)
+ */
 GraphView::GraphView(QGraphicsScene *scene, QWidget *parent)
     : QGraphicsView(scene, parent), scene_(scene) {
   setMouseTracking(true);
-  setFocusPolicy(Qt::StrongFocus); // ДОБАВИТЬ для горячих клавиш
+  setFocusPolicy(Qt::StrongFocus);
   setupNodeSelectionBridge();
   setupZoomButtons();
   setupHelpButton();
 }
 
+/**
+ * @brief Настраивает кнопки масштабирования
+ */
 void GraphView::setupZoomButtons() {
   zoomInBtn_ = new QPushButton("+", this);
   zoomOutBtn_ = new QPushButton("-", this);
@@ -51,6 +58,9 @@ void GraphView::setupZoomButtons() {
   zoomOutBtn_->raise();
 }
 
+/**
+ * @brief Настраивает кнопку справки
+ */
 void GraphView::setupHelpButton() {
   helpBtn_ = new QPushButton("?", this);
   helpBtn_->setFixedSize(40, 40);
@@ -75,6 +85,9 @@ void GraphView::setupHelpButton() {
   helpBtn_->raise();
 }
 
+/**
+ * @brief Отображает диалоговое окно справки
+ */
 void GraphView::showHelpDialog() {
   QMessageBox *msgBox = new QMessageBox(this);
   msgBox->setWindowTitle("Справка - Редактор графов");
@@ -117,11 +130,18 @@ void GraphView::showHelpDialog() {
   delete msgBox;
 }
 
+/**
+ * @brief Обработчик изменения размера виджета
+ * @param event Событие изменения размера
+ */
 void GraphView::resizeEvent(QResizeEvent *event) {
   QGraphicsView::resizeEvent(event);
   updateButtonsPosition();
 }
 
+/**
+ * @brief Обновляет позиции кнопок на форме
+ */
 void GraphView::updateButtonsPosition() {
   if (!zoomInBtn_ || !zoomOutBtn_ || !helpBtn_)
     return;
@@ -144,6 +164,9 @@ void GraphView::updateButtonsPosition() {
                         helpBtn_->width(), helpBtn_->height());
 }
 
+/**
+ * @brief Увеличивает масштаб сцены
+ */
 void GraphView::zoomIn() {
   if (currentZoom_ * ZOOM_STEP <= MAX_ZOOM) {
     currentZoom_ *= ZOOM_STEP;
@@ -151,6 +174,9 @@ void GraphView::zoomIn() {
   }
 }
 
+/**
+ * @brief Уменьшает масштаб сцены
+ */
 void GraphView::zoomOut() {
   if (currentZoom_ / ZOOM_STEP >= MIN_ZOOM) {
     currentZoom_ /= ZOOM_STEP;
@@ -158,6 +184,10 @@ void GraphView::zoomOut() {
   }
 }
 
+/**
+ * @brief Обработчик нажатия клавиш клавиатуры
+ * @param event Событие клавиатуры
+ */
 void GraphView::keyPressEvent(QKeyEvent *event) {
   if (event->modifiers() == Qt::ControlModifier) {
     if (event->key() == Qt::Key_Plus || event->key() == Qt::Key_Equal) {
@@ -181,6 +211,10 @@ void GraphView::keyPressEvent(QKeyEvent *event) {
   QGraphicsView::keyPressEvent(event);
 }
 
+/**
+ * @brief Обработчик контекстного меню
+ * @param event Событие контекстного меню
+ */
 void GraphView::contextMenuEvent(QContextMenuEvent *event) {
   if (itemAt(event->pos()) == nullptr) {
     QMenu menu;
@@ -197,6 +231,10 @@ void GraphView::contextMenuEvent(QContextMenuEvent *event) {
   }
 }
 
+/**
+ * @brief Начинает процесс создания ребра от указанного узла
+ * @param startNode Начальный узел, от которого создаётся ребро
+ */
 void GraphView::startEdgeCreation(SmoothNode *startNode) {
   isCreatingEdge_ = true;
   tempStartNode_ = startNode;
@@ -209,6 +247,10 @@ void GraphView::startEdgeCreation(SmoothNode *startNode) {
   scene_->addItem(tempEdge_);
 }
 
+/**
+ * @brief Обновляет тему оформления для всех элементов на сцене
+ * @param colors Цветовая схема темы
+ */
 void GraphView::updateAllElementsTheme(const ThemeColors &colors) {
   if (!scene_)
     return;
@@ -249,6 +291,10 @@ void GraphView::updateAllElementsTheme(const ThemeColors &colors) {
   }
 }
 
+/**
+ * @brief Обработчик движения мыши
+ * @param event Событие движения мыши
+ */
 void GraphView::mouseMoveEvent(QMouseEvent *event) {
   if (isCreatingEdge_ && tempEdge_) {
     QPointF currentPos = mapToScene(event->pos());
@@ -258,6 +304,10 @@ void GraphView::mouseMoveEvent(QMouseEvent *event) {
   QGraphicsView::mouseMoveEvent(event);
 }
 
+/**
+ * @brief Обработчик нажатия кнопки мыши
+ * @param event Событие мыши
+ */
 void GraphView::mousePressEvent(QMouseEvent *event) {
   if (isCreatingEdge_) {
     if (event->button() == Qt::LeftButton) {
@@ -315,6 +365,10 @@ void GraphView::mousePressEvent(QMouseEvent *event) {
   QGraphicsView::mousePressEvent(event);
 }
 
+/**
+ * @brief Добавляет новый узел в указанной позиции
+ * @param pos Позиция для добавления узла
+ */
 void GraphView::addFigure(const QPointF &pos) {
   SmoothNode *fig = new SmoothNode(pos.x(), pos.y(), 50);
 
@@ -332,6 +386,9 @@ void GraphView::addFigure(const QPointF &pos) {
   }
 }
 
+/**
+ * @brief Очищает всю сцену, удаляя все узлы и рёбра
+ */
 void GraphView::clearScene() {
   if (!scene_)
     return;
@@ -349,7 +406,6 @@ void GraphView::clearScene() {
     SmoothEdge *edge = dynamic_cast<SmoothEdge *>(item);
     if (edge) {
       qDebug() << "Removing edge manually";
-      // emit edgeRemoved(edge);
 
       SmoothNode *start = edge->getStartNode();
       SmoothNode *end = edge->getEndNode();
@@ -369,7 +425,6 @@ void GraphView::clearScene() {
     SmoothNode *fig = dynamic_cast<SmoothNode *>(item);
     if (fig) {
       qDebug() << "Removing figure manually";
-      // emit nodeRemoved(fig);
 
       fig->clearIncomingEdges();
       fig->clearOutcomingEdges();
@@ -390,6 +445,9 @@ void GraphView::clearScene() {
   qDebug() << "Clear finished";
 }
 
+/**
+ * @brief Настраивает мост для выбора узлов через сигналы
+ */
 void GraphView::setupNodeSelectionBridge() {
   NodeSelectionBridge *bridge = NodeSelectionBridge::instance();
 
@@ -403,6 +461,10 @@ void GraphView::setupNodeSelectionBridge() {
           &GraphView::clearEndNode);
 }
 
+/**
+ * @brief Устанавливает указанный узел как стартовый для поиска пути
+ * @param node Узел, который станет стартовым
+ */
 void GraphView::setStartNode(SmoothNode *node) {
   if (!node)
     return;
@@ -432,6 +494,10 @@ void GraphView::setStartNode(SmoothNode *node) {
   clearPathHighlight();
 }
 
+/**
+ * @brief Устанавливает указанный узел как конечный для поиска пути
+ * @param node Узел, который станет конечным
+ */
 void GraphView::setEndNode(SmoothNode *node) {
   if (!node)
     return;
@@ -461,6 +527,10 @@ void GraphView::setEndNode(SmoothNode *node) {
   clearPathHighlight();
 }
 
+/**
+ * @brief Сбрасывает статус стартового узла
+ * @param node Узел, у которого снимается статус стартового
+ */
 void GraphView::clearStartNode(SmoothNode *node) {
   qDebug() << "clearStartNode called for node:" << (node ? node->getId() : 0);
   if (pathStartNode_ == node) {
@@ -471,6 +541,10 @@ void GraphView::clearStartNode(SmoothNode *node) {
   }
 }
 
+/**
+ * @brief Сбрасывает статус конечного узла
+ * @param node Узел, у которого снимается статус конечного
+ */
 void GraphView::clearEndNode(SmoothNode *node) {
   qDebug() << "clearEndNode called for node:" << (node ? node->getId() : 0);
   if (pathEndNode_ == node) {
@@ -481,6 +555,10 @@ void GraphView::clearEndNode(SmoothNode *node) {
   }
 }
 
+/**
+ * @brief Подсвечивает указанный путь на графе
+ * @param path Вектор указателей на узлы, составляющие путь
+ */
 void GraphView::highlightPath(const std::vector<SmoothNode *> &path) {
   clearPathHighlight();
 
@@ -504,6 +582,9 @@ void GraphView::highlightPath(const std::vector<SmoothNode *> &path) {
   qDebug() << "Path highlighted with" << path.size() << "nodes";
 }
 
+/**
+ * @brief Снимает подсветку с текущего пути
+ */
 void GraphView::clearPathHighlight() {
   if (!scene_)
     return;
