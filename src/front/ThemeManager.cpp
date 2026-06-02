@@ -1,9 +1,17 @@
 #include "ThemeManager.hpp"
 
+/**
+ * @brief Конструктор менеджера тем
+ * @param parent QObject* Родительский объект (по умолчанию nullptr)
+ */
 ThemeManager::ThemeManager(QObject *parent) : QObject(parent) {
   setTheme(Light);
-};
+}
 
+/**
+ * @brief Устанавливает текущую тему оформления
+ * @param theme Theme Выбранная тема (Light или Dark)
+ */
 void ThemeManager::setTheme(Theme theme) {
   if (currentTheme_ == theme)
     return;
@@ -12,10 +20,23 @@ void ThemeManager::setTheme(Theme theme) {
   emit themeChanged();
 }
 
+/**
+ * @brief Возвращает текущую активную тему
+ * @return Theme Текущая тема оформления
+ */
 Theme ThemeManager::getTheme() { return currentTheme_; }
 
+/**
+ * @brief Возвращает цветовую схему текущей темы
+ * @return ThemeColors Структура со всеми цветами текущей темы
+ */
 ThemeColors ThemeManager::getThemeColors() { return currentColors_; }
 
+/**
+ * @brief Загружает цветовую схему для указанной темы
+ * @param theme Theme Тема, для которой нужно загрузить цвета
+ * @return ThemeColors Готовая цветовая схема для запрошенной темы
+ */
 ThemeColors ThemeManager::loadTheme(Theme theme) const {
   ThemeColors colors;
   if (theme == Dark) {
@@ -37,41 +58,19 @@ ThemeColors ThemeManager::loadTheme(Theme theme) const {
     colors.pressed = QColor(0, 92, 153);   // #005c99
     colors.selected = QColor(0, 102, 179); // #0066b3
 
-    // --- Узлы и ребра (Нейтральные) ---
-    // Серый средней яркости, хорошо виден на темном, но не кричит
     colors.nodeDefault = QColor(100, 100, 100); // #646464
+    colors.nodeHover = QColor(130, 130, 130);   // #828282
+    colors.edgeDefault = QColor(70, 70, 70);    // #464646
 
-    // При наведении: чуть светлее и теплее
-    colors.nodeHover = QColor(130, 130, 130); // #828282
-
-    // Ребро по умолчанию: темнее узлов, чтобы не спорить с ними
-    colors.edgeDefault = QColor(70, 70, 70); // #464646
-
-    // Статусы (оставляем стандартные, они хороши)
     colors.success = QColor(39, 174, 96);  // #27ae60
     colors.error = QColor(231, 76, 60);    // #e74c3c
     colors.warning = QColor(241, 196, 15); // #f1c40f
 
     // --- Цвета для пути (Специальная палитра) ---
-
-    // Старт: Бирюзовый/Teal. Свежий цвет, ассоциируется с началом.
-    // Отличается от зеленого success, но гармонирует с ним.
     colors.startNode = QColor(26, 188, 156); // #1abc9c
-
-    // Конец: Коралловый/Soft Red. Яркий, но не такой агрессивный, как error.
-    // Хорошо контрастирует с бирюзовым стартом.
-    colors.endNode = QColor(231, 76, 60); // #e74c3c (можно использовать тот же,
-                                          // что error, или чуть мягче: #ff6b6b)
-    // Давайте возьмем чуть более уникальный оттенок, чтобы не сливался с
-    // ошибками валидации:
-    colors.endNode = QColor(255, 107, 107); // #ff6b6b
-
-    // Путь: Янтарный/Orange. Теплый цвет, логично соединяющий холодный старт и
-    // теплый конец. Менее кислотный, чем warning.
-    colors.pathNode = QColor(243, 156, 18); // #f39c12
-
-    // Ребро пути: Тот же янтарный или чуть светлее для видимости
-    colors.pathEdge = QColor(243, 156, 18); // #f39c12
+    colors.endNode = QColor(255, 107, 107);  // #ff6b6b
+    colors.pathNode = QColor(243, 156, 18);  // #f39c12
+    colors.pathEdge = QColor(243, 156, 18);  // #f39c12
 
   } else {
     // --- Светлая тема ---
@@ -93,13 +92,8 @@ ThemeColors ThemeManager::loadTheme(Theme theme) const {
     colors.selected = QColor(0, 102, 179); // #0066b3
 
     // --- Узлы и ребра (Нейтральные) ---
-    // Светло-серый, чуть темнее фона surface
     colors.nodeDefault = QColor(220, 220, 220); // #dcdcdc
-
-    // При наведении: чуть темнее
-    colors.nodeHover = QColor(200, 200, 200); // #c8c8c8
-
-    // Ребро по умолчанию: серый, видимый на белом
+    colors.nodeHover = QColor(200, 200, 200);   // #c8c8c8
     colors.edgeDefault = QColor(150, 150, 150); // #969696
 
     // Статусы
@@ -108,18 +102,10 @@ ThemeColors ThemeManager::loadTheme(Theme theme) const {
     colors.warning = QColor(241, 196, 15); // #f1c40f
 
     // --- Цвета для пути (Специальная палитра) ---
-
-    // Старт: Насыщенный бирюзовый, хорошо виден на белом
     colors.startNode = QColor(22, 160, 133); // #16a085
-
-    // Конец: Насыщенный коралловый/красный
-    colors.endNode = QColor(231, 76, 60); // #e74c3c
-
-    // Путь: Насыщенный оранжевый
-    colors.pathNode = QColor(211, 84, 0); // #d35400
-
-    // Ребро пути
-    colors.pathEdge = QColor(211, 84, 0); // #d35400
+    colors.endNode = QColor(231, 76, 60);    // #e74c3c
+    colors.pathNode = QColor(211, 84, 0);    // #d35400
+    colors.pathEdge = QColor(211, 84, 0);    // #d35400
   }
   return colors;
 }
