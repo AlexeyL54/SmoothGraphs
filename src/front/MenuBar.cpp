@@ -1,6 +1,10 @@
 #include "MenuBar.hpp"
 #include "ThemeManager.hpp"
 
+/**
+ * @brief Конструктор.
+ * @param parent Родительский виджет.
+ */
 MenuBar::MenuBar(QWidget *parent) : QWidget(parent) {
   mainLaout_ = new QVBoxLayout(this);
   mainLaout_->setContentsMargins(40, 0, 40, 0);
@@ -20,6 +24,9 @@ MenuBar::MenuBar(QWidget *parent) : QWidget(parent) {
   mainLaout_->addWidget(menuFrame_);
 };
 
+/**
+ * @brief Настраивает все кнопки меню.
+ */
 void MenuBar::setButtons() {
   openBtn_ = new QPushButton("Открыть");
   openBtn_->setFixedSize(110, 40);
@@ -82,6 +89,9 @@ void MenuBar::setButtons() {
   connect(wrapBtn_, &QPushButton::clicked, this, &MenuBar::wrapMenu);
 }
 
+/**
+ * @brief Добавляет кнопки в layout.
+ */
 void MenuBar::addButtons() {
   buttonLayout_->addWidget(openBtn_);
   buttonLayout_->addWidget(saveBtn_);
@@ -91,6 +101,9 @@ void MenuBar::addButtons() {
   mainLaout_->addWidget(wrapBtn_, 0, Qt::AlignCenter);
 }
 
+/**
+ * @brief Настраивает анимацию сворачивания.
+ */
 void MenuBar::setWrapAnimation() {
   wrapAnimation_ = new QPropertyAnimation(menuFrame_, "maximumHeight");
   wrapAnimation_->setDuration(150);
@@ -98,6 +111,9 @@ void MenuBar::setWrapAnimation() {
   menuFrame_->setMaximumHeight(MAX_HEIGHT_);
 }
 
+/**
+ * @brief Сворачивает или разворачивает панель с анимацией.
+ */
 void MenuBar::wrapMenu() {
   if (isExpanded_) {
     wrapAnimation_->setStartValue(menuFrame_->height());
@@ -112,6 +128,13 @@ void MenuBar::wrapMenu() {
   isExpanded_ = !isExpanded_;
 }
 
+/**
+ * @brief Возвращает максимальную высоту панели.
+ * @return Максимальная высота в пикселях.
+ */
 int MenuBar::maxHeight() { return MAX_HEIGHT_; }
 
+/**
+ * @brief Деструктор.
+ */
 MenuBar::~MenuBar() {};
