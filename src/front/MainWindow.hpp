@@ -113,7 +113,7 @@ private:
    * @param filepath Путь к файлу для загрузки.
    * @return true, если загрузка прошла успешно, иначе false.
    */
-  bool loadGraphFromFile(const QString &filepath);
+  Q_INVOKABLE bool loadGraphFromFile(const QString &filepath);
 
   /**
    * @brief Выполняет поиск кратчайшего пути и визуализирует его.

@@ -65,4 +65,45 @@ private:
    * @param edges Вектор рёбер.
    */
   void saveEdges(QTextStream &out, const std::vector<SmoothEdge *> &edges);
+
+  /**
+   * @brief Предварительная обработка содержимого файла (удаление комментариев).
+   * @param content Исходное содержимое файла.
+   * @return Очищенное содержимое.
+   */
+  QString preprocessContent(const QString &content) const;
+
+  /**
+   * @brief Парсит узлы из содержимого.
+   * @param content Очищенное содержимое файла.
+   * @param nodes Выходной параметр: вектор узлов.
+   * @return true если парсинг прошёл успешно.
+   */
+  bool parseNodes(const QString &content,
+                  std::vector<std::tuple<size_t, double, double>> &nodes) const;
+
+  /**
+   * @brief Парсит рёбра из содержимого.
+   * @param content Очищенное содержимое файла.
+   * @param edges Выходной параметр: вектор рёбер.
+   * @return true если парсинг прошёл успешно.
+   */
+  bool parseEdges(const QString &content,
+                  std::vector<std::tuple<size_t, size_t, float>> &edges) const;
+
+  /**
+   * @brief Парсит один узел из регулярного выражения.
+   * @param match Регулярное выражение с данными узла.
+   * @return tuple (id, x, y) или std::nullopt если парсинг не удался.
+   */
+  std::optional<std::tuple<size_t, double, double>>
+  parseNodeMatch(const QRegularExpressionMatch &match) const;
+
+  /**
+   * @brief Парсит одно ребро из регулярного выражения.
+   * @param match Регулярное выражение с данными ребра.
+   * @return tuple (from, to, weight) или std::nullopt если парсинг не удался.
+   */
+  std::optional<std::tuple<size_t, size_t, float>>
+  parseEdgeMatch(const QRegularExpressionMatch &match) const;
 };

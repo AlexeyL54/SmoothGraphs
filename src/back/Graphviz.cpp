@@ -5,6 +5,7 @@
 #include <QFile>
 #include <QRegularExpression>
 #include <QTextStream>
+#include <optional>
 
 /**
  * @brief Конструктор класса Graphviz.
@@ -53,7 +54,6 @@ void Graphviz::saveNodes(QTextStream &out,
  * @param out Выходной поток.
  * @param edges Вектор рёбер.
  */
-// Graphviz.cpp
 void Graphviz::saveEdges(QTextStream &out,
                          const std::vector<SmoothEdge *> &edges) {
   out << "\n  // Edges\n";
@@ -67,7 +67,6 @@ void Graphviz::saveEdges(QTextStream &out,
     if (!start || !end)
       continue;
 
-    // Добавим отладочный вывод
     qDebug() << "Saving edge: start ID=" << start->getId()
              << "end ID=" << end->getId() << "weight=" << edge->getWeight();
 
@@ -91,7 +90,7 @@ bool Graphviz::saveToFile(const QString &filename,
                           const std::vector<SmoothEdge *> &edges) {
   QFile file(filename);
   if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-    return -1;
+    return false;
   }
 
   QTextStream out(&file);
@@ -118,7 +117,6 @@ bool Graphviz::saveToFile(const QString &filename,
  * @param defaultValue Значение по умолчанию при ошибке.
  * @return Преобразованное значение или defaultValue.
  */
-// Qt-версия функции safeStringToFloat
 static float safeStringToFloat(const QString &str, float defaultValue = 1.0f) {
   if (str.isEmpty()) {
     return defaultValue;
@@ -151,6 +149,133 @@ static float safeStringToFloat(const QString &str, float defaultValue = 1.0f) {
 }
 
 /**
+ * @brief Предварительная обработка содержимого файла (удаление комментариев).
+ * @param content Исходное содержимое файла.
+ * @return Очищенное содержимое.
+ */
+QString Graphviz::preprocessContent(const QString &content) const {
+  QString processed = content;
+
+  // Удаляем однострочные комментарии
+  QRegularExpression commentRegex(R"(//[^\n]*\n)");
+  processed.replace(commentRegex, "\n");
+
+  // Удаляем многострочные комментарии
+  QRegularExpression multiCommentRegex(R"(/\*.*?\*/)");
+  multiCommentRegex.setPatternOptions(
+      QRegularExpression::DotMatchesEverythingOption);
+  processed.replace(multiCommentRegex, "");
+
+  return processed;
+}
+
+/**
+ * @brief Парсит один узел из регулярного выражения.
+ * @param match Регулярное выражение с данными узла.
+ * @return tuple (id, x, y) или std::nullopt если парсинг не удался.
+ */
+std::optional<std::tuple<size_t, double, double>>
+Graphviz::parseNodeMatch(const QRegularExpressionMatch &match) const {
+  if (match.lastCapturedIndex() < 3) {
+    return std::nullopt;
+  }
+
+  bool idOk, xOk, yOk;
+  size_t id = match.captured(1).toULongLong(&idOk);
+  double x = match.captured(2).toDouble(&xOk);
+  double y = match.captured(3).toDouble(&yOk);
+
+  if (idOk && xOk && yOk) {
+    return std::make_tuple(id, x, y);
+  }
+
+  qDebug() << "Failed to parse node: invalid format";
+  return std::nullopt;
+}
+
+/**
+ * @brief Парсит узлы из содержимого.
+ * @param content Очищенное содержимое файла.
+ * @param nodes Выходной параметр: вектор узлов (id, x, y).
+ * @return true если парсинг прошёл успешно, false в противном случае.
+ */
+bool Graphviz::parseNodes(
+    const QString &content,
+    std::vector<std::tuple<size_t, double, double>> &nodes) const {
+
+  QRegularExpression nodeRegex(
+      R"(n(\d+)\s*\[[^\]]*pos=\"([^,]+),([^!]+)!\"[^\]]*\])");
+  QRegularExpressionMatchIterator nodeIt = nodeRegex.globalMatch(content);
+
+  int parsedCount = 0;
+  while (nodeIt.hasNext()) {
+    auto nodeOpt = parseNodeMatch(nodeIt.next());
+    if (nodeOpt.has_value()) {
+      nodes.push_back(nodeOpt.value());
+      parsedCount++;
+    }
+  }
+
+  qDebug() << "Parsed" << parsedCount << "nodes";
+  return !nodes.empty();
+}
+
+/**
+ * @brief Парсит одно ребро из регулярного выражения.
+ * @param match Регулярное выражение с данными ребра.
+ * @return tuple (from, to, weight) или std::nullopt если парсинг не удался.
+ */
+std::optional<std::tuple<size_t, size_t, float>>
+Graphviz::parseEdgeMatch(const QRegularExpressionMatch &match) const {
+  if (match.lastCapturedIndex() < 2) {
+    return std::nullopt;
+  }
+
+  bool fromOk, toOk;
+  size_t from = match.captured(1).toULongLong(&fromOk);
+  size_t to = match.captured(2).toULongLong(&toOk);
+
+  if (!fromOk || !toOk) {
+    qDebug() << "Failed to parse edge: invalid node IDs";
+    return std::nullopt;
+  }
+
+  float weight = 1.0f;
+  if (match.lastCapturedIndex() >= 3 && match.captured(3).length() > 0) {
+    weight = safeStringToFloat(match.captured(3), 1.0f);
+  }
+
+  return std::make_tuple(from, to, weight);
+}
+
+/**
+ * @brief Парсит рёбра из содержимого.
+ * @param content Очищенное содержимое файла.
+ * @param edges Выходной параметр: вектор рёбер (from, to, weight).
+ * @return true если парсинг прошёл успешно, false в противном случае.
+ */
+bool Graphviz::parseEdges(
+    const QString &content,
+    std::vector<std::tuple<size_t, size_t, float>> &edges) const {
+
+  QRegularExpression edgeRegex(
+      R"(n(\d+)\s*->\s*n(\d+)\s*(?:\[label=\"([^\"]+)\"\])?;)");
+  QRegularExpressionMatchIterator edgeIt = edgeRegex.globalMatch(content);
+
+  int parsedCount = 0;
+  while (edgeIt.hasNext()) {
+    auto edgeOpt = parseEdgeMatch(edgeIt.next());
+    if (edgeOpt.has_value()) {
+      edges.push_back(edgeOpt.value());
+      parsedCount++;
+    }
+  }
+
+  qDebug() << "Parsed" << parsedCount << "edges";
+  return true;
+}
+
+/**
  * @brief Загружает граф из файла формата .gphz.
  * @param filename Путь к файлу для загрузки.
  * @param nodes Выходной параметр: вектор узлов (id, x, y).
@@ -162,83 +287,28 @@ bool Graphviz::loadFromFile(
     std::vector<std::tuple<size_t, double, double>> &nodes,
     std::vector<std::tuple<size_t, size_t, float>> &edges) {
 
+  // Открытие файла
   QFile file(filename);
   if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
     qDebug() << "Failed to open file for reading:" << filename;
     return false;
   }
 
-  // Читаем весь файл в строку для удобства парсинга
+  // Чтение и предварительная обработка
   QTextStream stream(&file);
   QString content = stream.readAll();
   file.close();
 
-  // Удаляем комментарии
-  QRegularExpression commentRegex(R"(//[^\n]*\n)");
-  content.replace(commentRegex, "\n");
+  QString processed = preprocessContent(content);
 
-  // Удаляем многострочные комментарии
-  QRegularExpression multiCommentRegex(R"(/\*.*?\*/)");
-  multiCommentRegex.setPatternOptions(
-      QRegularExpression::DotMatchesEverythingOption);
-  content.replace(multiCommentRegex, "");
+  // Парсинг узлов и рёбер
+  nodes.clear();
+  edges.clear();
 
-  // Парсинг узлов: n123 [label="123" pos="x,y!"];
-  QRegularExpression nodeRegex(
-      R"(n(\d+)\s*\[[^\]]*pos=\"([^,]+),([^!]+)!\"[^\]]*\])");
-  QRegularExpressionMatchIterator nodeIt = nodeRegex.globalMatch(content);
+  bool nodesOk = parseNodes(processed, nodes);
+  parseEdges(processed, edges);
 
-  while (nodeIt.hasNext()) {
-    QRegularExpressionMatch match = nodeIt.next();
-    if (match.lastCapturedIndex() >= 3) {
-      bool idOk, xOk, yOk;
-      size_t id = match.captured(1).toULongLong(&idOk);
-      double x = match.captured(2).toDouble(&xOk);
-      double y = match.captured(3).toDouble(&yOk);
-
-      if (idOk && xOk && yOk) {
-        nodes.push_back(std::make_tuple(id, x, y));
-        qDebug() << "Loaded node:" << id << "at (" << x << "," << y << ")";
-      } else {
-        qDebug() << "Failed to parse node: invalid format";
-      }
-    }
-  }
-
-  // Парсинг рёбер: n1 -> n2; или n1 -> n2 [label="weight"];
-  QRegularExpression edgeRegex(
-      R"(n(\d+)\s*->\s*n(\d+)\s*(?:\[label=\"([^\"]+)\"\])?;)");
-  QRegularExpressionMatchIterator edgeIt = edgeRegex.globalMatch(content);
-
-  while (edgeIt.hasNext()) {
-    QRegularExpressionMatch match = edgeIt.next();
-    if (match.lastCapturedIndex() >= 2) {
-      bool fromOk, toOk;
-      size_t from = match.captured(1).toULongLong(&fromOk);
-      size_t to = match.captured(2).toULongLong(&toOk);
-
-      if (fromOk && toOk) {
-        float weight = 1.0f;
-
-        if (match.lastCapturedIndex() >= 3 && match.captured(3).length() > 0) {
-          bool weightOk;
-          float parsedWeight = match.captured(3).toFloat(&weightOk);
-          if (weightOk) {
-            weight = parsedWeight;
-          } else {
-            weight = safeStringToFloat(match.captured(3), 1.0f);
-          }
-        }
-
-        edges.push_back(std::make_tuple(from, to, weight));
-        qDebug() << "Loaded edge:" << from << "->" << to << "weight:" << weight;
-      } else {
-        qDebug() << "Failed to parse edge: invalid node IDs";
-      }
-    }
-  }
-
-  if (nodes.empty()) {
+  if (!nodesOk) {
     qDebug() << "No nodes found in file:" << filename;
     return false;
   }
