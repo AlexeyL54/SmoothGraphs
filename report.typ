@@ -9,7 +9,6 @@
   width: 210mm,
   height: 297mm,
   margin: 2.5cm,
-  //numbering: "1",
 )
 
 #set text(font: "BlexMono Nerd Font Mono")
@@ -74,13 +73,13 @@
     Разработали: \
     Студенты группы М70-406С-22 \
 
-    Лапшин А. А. \ #underline("                           ")\
+    Лапшин А.А. \ #underline("                           ")\
     Криницкий В.Г. \ #underline("                           ")\
-    Данилин И. Д. \ #underline("                           ")\
+    Данилин И.И. \ #underline("                           ")\
 
     Принял:\
-    Старший преподаватель кафедры 703 \
-    Барчев Н. Б. \ #underline("                           ")
+    Преподаватель кафедры 703 \
+    Мациюк Д.Ю. \ #underline("                           ")
   ]
 ]
 
@@ -253,8 +252,8 @@
           + Показать сообщение об успехе
 
   + #v(1em)
-  + #line-label(<clear-path>) *Очистка подсветки пути*
-    + *ЕСЛИ* нажата кнопка "Очистить путь":
+  + #line-label(<clear-path>) *Подсветка/Отмена подсветки пути*
+    + *ЕСЛИ* нажата кнопка "Стоп":
       + *ДЛЯ* каждого ребра на сцене:
         + Снять флаг подсветки
         + Вернуть обычный цвет
@@ -406,7 +405,7 @@
 
 #line(stroke: 1pt, length: 100%)
 
-==== Конструктор
+*Конструктор*
 
 ```cpp
 explicit MainWindow(ThemeManager &themeMng, QWidget *parent = nullptr);
@@ -435,7 +434,7 @@ explicit MainWindow(ThemeManager &themeMng, QWidget *parent = nullptr);
 
 #line(stroke: 1pt, length: 100%)
 
-==== Публичные методы
+*Публичные методы*
 
 ```cpp
 void updateStyle();
@@ -476,7 +475,7 @@ Graph *getGraph() const;
 
 #line(stroke: 1pt, length: 100%)
 
-==== Защищённые методы
+*Защищённые методы*
 
 ```cpp
 void resizeEvent(QResizeEvent *event) override;
@@ -492,7 +491,7 @@ graphView_ и menuBar_ при изменении размеров окна.
 
 #line(stroke: 1pt, length: 100%)
 
-==== Приватные методы
+*Приватные методы*
 
 ```cpp
 void setupGraphicsView();
@@ -674,7 +673,7 @@ bool saveSolutionToFile(const QString &filepath);
 
 #line(stroke: 1pt, length: 100%)
 
-==== Приватные слоты
+*Приватные слоты*
 
 ```cpp
 void onThemeChanged();
@@ -781,7 +780,7 @@ void onLoopFound();
 
 #line(stroke: 1pt, length: 100%)
 
-==== Поля класса
+*Поля класса*
 
 ```cpp
 QGraphicsScene *scene_;
@@ -861,7 +860,7 @@ QString solutionFocusDir_ = "";
 
 #line(stroke: 1pt, length: 100%)
 
-==== Конструктор
+*Конструктор*
 
 ```cpp
 explicit GraphView(QGraphicsScene *scene, QWidget *parent = nullptr);
@@ -879,7 +878,7 @@ explicit GraphView(QGraphicsScene *scene, QWidget *parent = nullptr);
 
 #line(stroke: 1pt, length: 100%)
 
-==== Публичные методы
+*Публичные методы*
 
 ```cpp
 void startEdgeCreation(SmoothNode *startNode);
@@ -1140,7 +1139,7 @@ void setupNodeSelectionBridge();
 
 #line(stroke: 1pt, length: 100%)
 
-==== Защищённые методы
+*Защищённые методы*
 
 ```cpp
 void contextMenuEvent(QContextMenuEvent *event) override;
@@ -1217,7 +1216,7 @@ void keyPressEvent(QKeyEvent *event) override;
 
 #line(stroke: 1pt, length: 100%)
 
-==== Приватные методы
+*Приватные методы*
 
 ```cpp
 void setupZoomButtons();
@@ -1274,7 +1273,7 @@ void showHelpDialog();
 
 #line(stroke: 1pt, length: 100%)
 
-==== Сигналы
+*Сигналы*
 
 ```cpp
 void nodeAdded(SmoothNode *node);
@@ -1363,7 +1362,7 @@ void sceneCleared();
 
 #line(stroke: 1pt, length: 100%)
 
-==== Поля класса
+*Поля класса*
 
 ```cpp
 QGraphicsScene *scene_;
@@ -1449,7 +1448,7 @@ const qreal MAX_ZOOM = 5.0;
 
 #line(stroke: 1pt, length: 100%)
 
-==== Публичные методы (NodeSelectionBridge)
+*Публичные методы (NodeSelectionBridge)*
 
 ```cpp
 static NodeSelectionBridge *instance();
@@ -1464,7 +1463,7 @@ static NodeSelectionBridge *instance();
 
 #line(stroke: 1pt, length: 100%)
 
-==== Сигналы (NodeSelectionBridge)
+*Сигналы (NodeSelectionBridge)*
 
 ```cpp
 void setStartNodeRequested(SmoothNode *node);
@@ -1510,7 +1509,7 @@ void clearEndNodeRequested(SmoothNode *node);
 
 #line(stroke: 1pt, length: 100%)
 
-==== Класс SmoothEdge
+*Класс SmoothEdge*
 
 *Класс SmoothEdge* — представляет ребро графа между двумя узлами.
 
@@ -1520,7 +1519,7 @@ void clearEndNodeRequested(SmoothNode *node);
 
 #line(stroke: 1pt, length: 100%)
 
-==== Конструктор (SmoothEdge)
+*Конструктор (SmoothEdge)*
 
 ```cpp
 SmoothEdge(SmoothNode *start, SmoothNode *end, QGraphicsItem *parent = nullptr);
@@ -1550,7 +1549,7 @@ SmoothEdge(SmoothNode *start, SmoothNode *end, QGraphicsItem *parent = nullptr);
 
 #line(stroke: 1pt, length: 100%)
 
-==== Публичные методы (SmoothEdge)
+*Публичные методы (SmoothEdge)*
 
 ```cpp
 void updatePosition();
@@ -1674,7 +1673,7 @@ QRectF boundingRect() const override;
 
 #line(stroke: 1pt, length: 100%)
 
-==== Защищённые методы (SmoothEdge)
+*Защищённые методы (SmoothEdge)*
 
 ```cpp
 void contextMenuEvent(QGraphicsSceneContextMenuEvent *event) override;
@@ -1706,7 +1705,7 @@ void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *w
 
 #line(stroke: 1pt, length: 100%)
 
-==== Приватные методы (SmoothEdge)
+*Приватные методы (SmoothEdge)*
 
 ```cpp
 std::pair<QPointF, QPointF> computeArrowPos(QLineF &line);
@@ -1751,7 +1750,7 @@ void showWeightDialog();
 
 #line(stroke: 1pt, length: 100%)
 
-==== Сигналы (SmoothEdge)
+*Сигналы (SmoothEdge)*
 
 ```cpp
 void edgeAboutToBeDeleted(SmoothEdge *self);
@@ -1765,7 +1764,7 @@ void edgeAboutToBeDeleted(SmoothEdge *self);
 
 #line(stroke: 1pt, length: 100%)
 
-==== Класс SmoothNode
+*Класс SmoothNode*
 
 *Класс SmoothNode* — представляет узел графа.
 
@@ -1776,7 +1775,7 @@ void edgeAboutToBeDeleted(SmoothEdge *self);
 
 #line(stroke: 1pt, length: 100%)
 
-==== Перечисление NodeRole
+*Перечисление NodeRole*
 
 ```cpp
 enum class NodeRole {
@@ -1791,7 +1790,7 @@ enum class NodeRole {
 
 #line(stroke: 1pt, length: 100%)
 
-==== Конструктор (SmoothNode)
+*Конструктор (SmoothNode)*
 
 ```cpp
 SmoothNode(qreal centerX, qreal centerY, qreal radius, QGraphicsItem *parent = nullptr);
@@ -1811,7 +1810,7 @@ SmoothNode(qreal centerX, qreal centerY, qreal radius, QGraphicsItem *parent = n
 
 #line(stroke: 1pt, length: 100%)
 
-==== Публичные методы (SmoothNode)
+*Публичные методы (SmoothNode)*
 
 ```cpp
 void addIncomingEdge(SmoothEdge *edge);
@@ -2060,7 +2059,7 @@ qreal getRadius() const;
 
 #line(stroke: 1pt, length: 100%)
 
-==== Защищённые методы (SmoothNode)
+*Защищённые методы (SmoothNode)*
 
 ```cpp
 void contextMenuEvent(QGraphicsSceneContextMenuEvent *event) override;
@@ -2136,7 +2135,7 @@ void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *w
 
 #line(stroke: 1pt, length: 100%)
 
-==== Приватные методы (SmoothNode)
+*Приватные методы (SmoothNode)*
 
 ```cpp
 void addEdge();
@@ -2212,7 +2211,7 @@ QGraphicsView *getParentView() const;
 
 #line(stroke: 1pt, length: 100%)
 
-==== Сигналы (SmoothNode)
+*Сигналы (SmoothNode)*
 
 ```cpp
 void nodeAboutToBeDeleted(SmoothNode *self);
@@ -2226,7 +2225,7 @@ void nodeAboutToBeDeleted(SmoothNode *self);
 
 #line(stroke: 1pt, length: 100%)
 
-==== Поля класса (SmoothNode)
+*Поля класса (SmoothNode)*
 
 ```cpp
 QList<SmoothEdge *> incomingEdges_;
@@ -2270,7 +2269,7 @@ bool isOnPath_ = false;
 
 #line(stroke: 1pt, length: 100%)
 
-==== Конструктор
+*Конструктор*
 
 ```cpp
 explicit MenuBar(QWidget *parent = nullptr);
@@ -2299,7 +2298,7 @@ explicit MenuBar(QWidget *parent = nullptr);
 
 #line(stroke: 1pt, length: 100%)
 
-==== Публичные методы
+*Публичные методы*
 
 ```cpp
 int maxHeight();
@@ -2380,7 +2379,7 @@ QPushButton *getStopBtn() const;
 
 #line(stroke: 1pt, length: 100%)
 
-==== Сигналы
+*Сигналы*
 
 ```cpp
 void saveGraphRequested();
@@ -2404,7 +2403,7 @@ void saveSolutionRequested();
 
 #line(stroke: 1pt, length: 100%)
 
-==== Приватные методы
+*Приватные методы*
 
 ```cpp
 void setButtons();
@@ -2467,8 +2466,8 @@ void wrapMenu();
 - Меняет иконку кнопки на стрелку вниз
 При разворачивании:
 - Устанавливает конечную высоту анимации в MAX_HEIGHT_
-- Меняет иконку кнопки на стрелку вверх
-Запускает анимацию и переключает флаг isExpanded_.
+  - Меняет иконку кнопки на стрелку вверх
+  Запускает анимацию и переключает флаг isExpanded_.
 
 *Параметры*: отсутствуют.
 
@@ -2476,7 +2475,7 @@ void wrapMenu();
 
 #line(stroke: 1pt, length: 100%)
 
-==== Поля класса
+*Поля класса*
 
 ```cpp
 const int MAX_HEIGHT_ = 60;
@@ -2557,7 +2556,7 @@ bool isExpanded_ = true;
 
 #line(stroke: 1pt, length: 100%)
 
-==== Схема компоновки
+*Схема компоновки*
 
 *Иерархия виджетов*:
 ```
@@ -2585,7 +2584,7 @@ MenuBar (QWidget)
 
 #line(stroke: 1pt, length: 100%)
 
-==== Перечисление Theme
+*Перечисление Theme*
 
 ```cpp
 enum Theme {
@@ -2598,7 +2597,7 @@ enum Theme {
 
 #line(stroke: 1pt, length: 100%)
 
-==== Структура ThemeColors
+*Структура ThemeColors*
 
 ```cpp
 struct ThemeColors {
@@ -2647,7 +2646,7 @@ struct ThemeColors {
 
 #line(stroke: 1pt, length: 100%)
 
-==== Конструктор
+*Конструктор*
 
 ```cpp
 explicit ThemeManager(QObject *parent = nullptr);
@@ -2662,7 +2661,7 @@ explicit ThemeManager(QObject *parent = nullptr);
 
 #line(stroke: 1pt, length: 100%)
 
-==== Публичные методы
+*Публичные методы*
 
 ```cpp
 void setTheme(Theme theme);
@@ -2705,7 +2704,7 @@ ThemeColors getThemeColors();
 
 #line(stroke: 1pt, length: 100%)
 
-==== Сигналы
+*Сигналы*
 
 ```cpp
 void themeChanged();
@@ -2719,7 +2718,7 @@ void themeChanged();
 
 #line(stroke: 1pt, length: 100%)
 
-==== Приватные методы
+*Приватные методы*
 
 ```cpp
 ThemeColors loadTheme(Theme theme) const;
@@ -2736,7 +2735,7 @@ ThemeColors loadTheme(Theme theme) const;
 
 #line(stroke: 1pt, length: 100%)
 
-==== Поля класса
+*Поля класса*
 
 ```cpp
 Theme currentTheme_;
@@ -2765,7 +2764,7 @@ ThemeColors currentColors_;
 
 #line(stroke: 1pt, length: 100%)
 
-==== Публичные методы
+*Публичные методы*
 
 ```cpp
 static QString generateGlobalStyleSheet(const ThemeColors &colors);
@@ -2845,7 +2844,7 @@ static QString generateHelpDialogStyleSheet(const ThemeColors &colors);
 
 #line(stroke: 1pt, length: 100%)
 
-==== Приватные методы — Глобальные стили
+*Приватные методы — Глобальные стили*
 
 ```cpp
 static QString generateBaseWidgetStyles(const ThemeColors &colors);
@@ -2954,7 +2953,7 @@ static QString generateStatusAndTooltipStyles(const ThemeColors &colors);
 
 #line(stroke: 1pt, length: 100%)
 
-==== Приватные методы — Стили меню-бара
+*Приватные методы — Стили меню-бара*
 
 ```cpp
 static QString generateMenuBarContainerStyles(const ThemeColors &colors);
@@ -3019,7 +3018,7 @@ static QString generateMenuBarWrapButtonStyles(const ThemeColors &colors);
 
 #line(stroke: 1pt, length: 100%)
 
-==== Утилиты
+*Утилиты*
 
 ```cpp
 static QString formatColor(const QColor &color);
@@ -3048,7 +3047,7 @@ static QString formatColor(const QColor &color);
 
 #line(stroke: 1pt, length: 100%)
 
-==== Публичные методы
+*Публичные методы*
 
 ```cpp
 inline const QString getHelpText();
@@ -3076,7 +3075,7 @@ inline const QString getHelpText();
 
 #line(stroke: 1pt, length: 100%)
 
-==== Конструктор
+*Конструктор*
 
 ```cpp
 explicit Graph(Logger *logger = nullptr);
@@ -3104,7 +3103,7 @@ explicit Graph(Logger *logger = nullptr);
 
 #line(stroke: 1pt, length: 100%)
 
-==== Структуры данных
+*Структуры данных*
 
 ```cpp
 struct NodeData {
@@ -3128,7 +3127,7 @@ struct EdgeData {
 
 #line(stroke: 1pt, length: 100%)
 
-==== Публичные методы — Управление узлами
+*Публичные методы — Управление узлами*
 
 ```cpp
 ID addNode(SmoothNode *node);
@@ -3202,7 +3201,7 @@ ID узла или 0 если не найден.
 
 #line(stroke: 1pt, length: 100%)
 
-==== Публичные методы — Управление рёбрами
+*Публичные методы — Управление рёбрами*
 
 ```cpp
 void addEdge(SmoothEdge *edge);
@@ -3245,7 +3244,7 @@ std::vector<SmoothEdge *> getEdges() const;
 
 #line(stroke: 1pt, length: 100%)
 
-==== Публичные методы — Работа с файлами
+*Публичные методы — Работа с файлами*
 
 ```cpp
 void clear();
@@ -3291,7 +3290,7 @@ bool parseFile(const QString &filepath, std::vector<NodeData> &nodes,
 
 #line(stroke: 1pt, length: 100%)
 
-==== Публичные методы — Состояние графа
+*Публичные методы — Состояние графа*
 
 ```cpp
 void setCurrentFilePath(QString &filepath);
@@ -3359,7 +3358,7 @@ unsigned long long getRevision();
 
 #line(stroke: 1pt, length: 100%)
 
-==== Публичные методы
+*Публичные методы*
 
 ```cpp
 std::vector<SmoothNode *> findShortestPath(SmoothNode *from, SmoothNode *to);
@@ -3487,7 +3486,7 @@ bool isDag(std::vector<SmoothNode *> &topoOrder) const;
 
 #line(stroke: 1pt, length: 100%)
 
-==== Приватные методы
+*Приватные методы*
 
 ```cpp
 bool initializeDistanceMaps(const std::vector<SmoothNode *> &nodes,
@@ -3578,7 +3577,7 @@ float getEdgeWeight(SmoothNode *from, SmoothNode *to) const;
 
 #line(stroke: 1pt, length: 100%)
 
-==== Сигналы
+*Сигналы*
 
 ```cpp
 void graphStructureChanged();
@@ -3602,7 +3601,7 @@ void loopFound();
 
 #line(stroke: 1pt, length: 100%)
 
-==== Поля класса
+*Поля класса*
 
 ```cpp
 std::unordered_map<ID, SmoothNode *> nodes_;
@@ -3660,7 +3659,7 @@ unsigned long long revision_;
 
 #line(stroke: 1pt, length: 100%)
 
-==== Конструктор
+*Конструктор*
 
 ```cpp
 Graphviz();
@@ -3674,7 +3673,7 @@ Graphviz();
 
 #line(stroke: 1pt, length: 100%)
 
-==== Публичные методы
+*Публичные методы*
 
 ```cpp
 bool saveToFile(const QString &filename,
@@ -3721,7 +3720,7 @@ ID узлов, их координаты и информацию о рёбрах
 
 #line(stroke: 1pt, length: 100%)
 
-==== Приватные методы
+*Приватные методы*
 
 ```cpp
 std::string escapeString(const std::string &str) const;
@@ -3871,7 +3870,7 @@ parseEdgeMatch(const QRegularExpressionMatch &match) const;
 
 #line(stroke: 1pt, length: 100%)
 
-==== Вспомогательные функции
+*Вспомогательные функции*
 
 ```cpp
 static float safeStringToFloat(const QString &str, float defaultValue = 1.0f);
@@ -3896,7 +3895,7 @@ static float safeStringToFloat(const QString &str, float defaultValue = 1.0f);
 
 #line(stroke: 1pt, length: 100%)
 
-==== Формат файла .gphz
+*Формат файла .gphz*
 
 *Расширение*: `.gphz`
 
@@ -3927,7 +3926,7 @@ digraph G {
 
 #line(stroke: 1pt, length: 100%)
 
-/////////////////////////////////////////////////////////////////////////// 
+///////////////////////////////////////////////////////////////////////////
 
 === Файл Logger.hpp/.cpp
 
@@ -3940,7 +3939,7 @@ digraph G {
 
 #line(stroke: 1pt, length: 100%)
 
-==== Перечисление STATUS
+*Перечисление STATUS*
 
 ```cpp
 enum STATUS {
@@ -3963,7 +3962,7 @@ enum STATUS {
 
 #line(stroke: 1pt, length: 100%)
 
-==== Конструктор
+*Конструктор*
 
 ```cpp
 Logger(bool timeStamp);
@@ -3980,7 +3979,7 @@ Logger(bool timeStamp);
 
 #line(stroke: 1pt, length: 100%)
 
-==== Публичные методы
+*Публичные методы*
 
 ```cpp
 void addMessage(STATUS status, const QString &message);
@@ -4086,7 +4085,7 @@ void setIncludeTimestamp(bool include);
 
 #line(stroke: 1pt, length: 100%)
 
-==== Приватные методы
+*Приватные методы*
 
 ```cpp
 static QString statusToString(STATUS status);
@@ -4130,7 +4129,7 @@ yyyy-MM-dd hh:mm:ss.zzz [STATUS]: message
 
 #line(stroke: 1pt, length: 100%)
 
-==== Структура Entry
+*Структура Entry*
 
 ```cpp
 struct Entry {
@@ -4144,7 +4143,7 @@ struct Entry {
 
 #line(stroke: 1pt, length: 100%)
 
-==== Поля класса
+*Поля класса*
 
 ```cpp
 QList<Entry> entries_;
@@ -4169,7 +4168,7 @@ bool includeTimestamp_;
 Запустите приложение, программа откроется в светлой теме с открытым меню.\
 #pict("img/firstcontact.png")
 Кнопки пронумерованы для их более удобного описания.\
-#pict("img/firstcontactnumer.png")
+#pict("img/instruction.png")
 1) Открыть инструкцию пользователя \
 2) Свернуть или развернуть меню \
 3) Увеличить масштаб \
@@ -4189,20 +4188,20 @@ bool includeTimestamp_;
 
 == Подготовка графа
 
-После того как вы создали необходимое количество узлов и провели грани между ними убедитесь что в графе нет циклов. При необходимости весовой коэффициент каждой грани можно поменять. Для этого нажмите правой кнопкой мыши по грани и выберите соответствующий пункт в меню. Так же для поиска кратчайшего пути необходимо задать стартовый и конечный узлы. На рис.5 изображен образец графа.
+После того как вы создали необходимое количество узлов и провели грани между ними убедитесь, что в графе нет циклов. При необходимости весовой коэффициент каждой грани можно поменять. Для этого нажмите правой кнопкой мыши на грань и выберите соответствующий пункт в меню. Так же для поиска кратчайшего пути необходимо задать стартовый и конечный узлы. На рис.5 изображен образец графа.
 #pict("img/graph.png")
 в случае наличия в графе циклов поиск кратчайшего пути будет невозможен и вы увидите сообщение об ошибке.
 
 == Результат и сохранение
 
-Когда граф построен и стартовый и конечный узел обозначены, в графе нет циклов и возможность попасть из стартового в конечный узел есть можно нажать кнопку номер 8 и получить кратчайший путь.
+Когда граф построен, и стартовый и конечный узел обозначены, в графе нет циклов, и возможность попасть из стартового в конечный узел есть можно, нажать кнопку номер 8 и получить кратчайший путь.
 #pict("img/graphComp.png")
 После того как решение получено можно сохранить граф или полный алгоритм решения нажав на кнопку "Сохранить" и выбрав нужный вариант во всплывающем меню.
 
-== Дополнительные фишки меню
+== Скрытие меню
 
-При желании меню можно скрыть меню нажав на зеленую стрелку. Что бы в дальнейшем вернуть меню необходимо нажать на стрелку еще раз. \
-Для смены цветовой схемы (темы) нужно нажать на кнопку "Тема" и выбрать желаемый вариант во всплывающем меню
+При желании можно скрыть меню нажав на зеленую стрелку. Чтобы вернуть меню, необходимо нажать на стрелку еще раз. \
+Для смены цветовой схемы (темы) нужно нажать на кнопку "Тема" и выбрать желаемый вариант во всплывающем меню.
 
 #pagebreak()
 
@@ -4220,7 +4219,7 @@ bool includeTimestamp_;
 
 == Figures.hpp
 #listing("src/front/Figures.hpp")
-== Figures.cpp  
+== Figures.cpp
 #listing("src/front/Figures.cpp")
 
 == MenuBar.hpp
@@ -4238,7 +4237,7 @@ bool includeTimestamp_;
 == StyleManager.cpp
 #listing("src/front/StyleManager.cpp")
 
-== HelpText.hpp 
+== HelpText.hpp
 #listing("src/front/HelpText.hpp")
 
 == Graph.hpp
@@ -4251,9 +4250,9 @@ bool includeTimestamp_;
 == Graphviz.cpp
 #listing("src/back/Graphviz.cpp")
 
-== Logger.hpp 
+== Logger.hpp
 #listing("src/back/Logger.hpp")
-== Logger.cpp 
+== Logger.cpp
 #listing("src/back/Logger.cpp")
 
 #pagebreak()
